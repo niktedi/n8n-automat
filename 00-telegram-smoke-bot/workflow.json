@@ -1,0 +1,437 @@
+{
+  "name": "00 · Telegram smoke bot",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c980de2c-46b4-47ac-babe-9679ba63be43",
+              "leftValue": "={{ $('Telegram Trigger').item.json.message.chat.id.toString() }}",
+              "rightValue": "={{ $json.allowedChatId }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1024,
+        160
+      ],
+      "id": "b6357d54-9c66-48b1-a48e-b500fe12e1f7",
+      "name": "Allowed chat?"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -1616,
+        -96
+      ],
+      "id": "5c4e9ef7-7659-4769-8543-f101e6be12e2",
+      "name": "Telegram Trigger",
+      "webhookId": "b4ad7252-a443-4b9c-b9d3-70d245f30775",
+      "credentials": {
+        "telegramApi": {
+          "id": "0WXAHGgjA4zuUMPF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+                    "rightValue": "/ping",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7fe1fe75-cc1f-41f3-8d62-c246a7b66c11"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fa906945-c4e7-444f-8109-0cb4bb98b422",
+                    "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+                    "rightValue": "/version",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        64
+      ],
+      "id": "301b696b-bc08-4447-9854-250b5d07d1c1",
+      "name": "Command"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fb5a708-8677-47b1-a324-9118d76620ca",
+              "name": "allowedChatId",
+              "value": "__ALLOWED_CHAT_ID__",
+              "type": "string"
+            },
+            {
+              "id": "8a406738-230f-40c1-9856-ba796502a457",
+              "name": "gitSha",
+              "value": "__GIT_SHA__",
+              "type": "string"
+            },
+            {
+              "id": "8714e283-babf-4d01-8f36-07a73af7c72b",
+              "name": "deployedAt",
+              "value": "__DEPLOYED_AT__",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -1408,
+        -96
+      ],
+      "id": "bd1dd510-8b17-446a-ace6-4eae8e847255",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}.Text",
+        "text": "pong",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -224
+      ],
+      "id": "d3824edb-cd99-4340-825b-8f196d791544",
+      "name": "Send a text message",
+      "webhookId": "a1ce9482-74b1-43b8-b09e-51d6b0b4d030",
+      "credentials": {
+        "telegramApi": {
+          "id": "0WXAHGgjA4zuUMPF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}.Text",
+        "text": "=Version: {{ $('Config').item.json.gitSha }}\nDeployed: {{ $('Config').item.json.deployedAt }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -32
+      ],
+      "id": "762e1ccb-a207-4d54-b876-96a0de6f3c2d",
+      "name": "Send a text message1",
+      "webhookId": "a1ce9482-74b1-43b8-b09e-51d6b0b4d030",
+      "credentials": {
+        "telegramApi": {
+          "id": "0WXAHGgjA4zuUMPF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}.Text",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        176
+      ],
+      "id": "7b1d6a15-e35f-484b-96d6-e3ac44a85d40",
+      "name": "Send a text message2",
+      "webhookId": "a1ce9482-74b1-43b8-b09e-51d6b0b4d030",
+      "credentials": {
+        "telegramApi": {
+          "id": "0WXAHGgjA4zuUMPF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').first().json.message.text }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -528,
+        176
+      ],
+      "id": "1f716451-85b8-4d88-8e39-f813bc5c0c5e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "google/gemma-4-31b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        384
+      ],
+      "id": "836b9330-407e-451d-83c0-8606c5ccc8d7",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "JOlJQO9PC2CC4gEN",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -624,
+        384
+      ],
+      "id": "00351b7c-b53c-48ba-9b1e-110ff16da5bc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        544
+      ],
+      "id": "eba2641c-ed97-4303-9ec9-27662bed146f",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Возвращает текущий средний курс валюты к PLN по данным НБП",
+        "url": "=https://api.nbp.pl/api/exchangerates/rates/a/{{ $fromAI('currency', 'USD') }}/?format=json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        528
+      ],
+      "id": "72330603-e7e6-4822-9141-5b7f5e125eee",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed chat?": {
+      "main": [
+        [
+          {
+            "node": "Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Allowed chat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f5c967e1-7df3-4c2d-98fa-4cf8f0790354",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "oRt2cHThVQiF3RDq",
+  "tags": []
+}
