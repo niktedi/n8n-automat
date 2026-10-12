@@ -151,18 +151,18 @@
             {
               "id": "2fb5a708-8677-47b1-a324-9118d76620ca",
               "name": "allowedChatId",
-              "value": "246475971",
+              "value": "__ALLOWED_CHAT_ID__",
               "type": "string"
             },
             {
               "id": "8a406738-230f-40c1-9856-ba796502a457",
-              "name": "gitSha",
+              "name": "__GIT_SHA__",
               "value": "dev",
               "type": "string"
             },
             {
               "id": "8714e283-babf-4d01-8f36-07a73af7c72b",
-              "name": "deployedAt",
+              "name": "__DEPLOYED_AT__",
               "value": "manual",
               "type": "string"
             }
