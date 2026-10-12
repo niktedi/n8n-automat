@@ -72,6 +72,10 @@ def check(file: Path) -> list[str]:
 
 
 def main() -> int:
+    # Windows consoles/pipes default to cp1252, which cannot print ✓/✗ or Cyrillic
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
     files = sorted(ROOT.glob("*/workflow.json")) + sorted(ROOT.glob("infra/*-workflow.json"))
     if not files:
         print("No workflow files found yet — nothing to check.")

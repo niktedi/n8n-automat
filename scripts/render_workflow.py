@@ -52,6 +52,10 @@ def remap_credentials(workflow: dict, target_creds: list) -> None:
 
 
 def main() -> int:
+    # Windows consoles/pipes default to cp1252, which cannot print ✓/✗ or Cyrillic
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
     src, dst = sys.argv[1], sys.argv[2]
     creds_file = sys.argv[3] if len(sys.argv) > 3 else None
 
