@@ -1,0 +1,32 @@
+name: Checks
+
+# Runs on GitHub-hosted runners only. The self-hosted runner on the VPS is
+# reserved for deploys from main, so code from forks never runs on the server.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  workflows:
+    name: Validate n8n workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/check_workflows.py
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
