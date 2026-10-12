@@ -1,0 +1,16 @@
+name: Deploy 00 · Telegram smoke bot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "00-telegram-smoke-bot/**"
+      - ".github/workflows/deploy-00-telegram-smoke-bot.yml"
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-scenario.yml
+    with:
+      scenario: 00-telegram-smoke-bot
+    secrets: inherit
