@@ -1,0 +1,28 @@
+#!/bin/sh
+# Runs before every commit and blocks it if a workflow is not clean or a secret is staged.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass in an emergency:  git commit --no-verify   (CI still checks after push)
+
+# Find a working Python (on Windows "python3" may be a Microsoft Store stub)
+PY=""
+for c in python3 python; do
+  if "$c" -c "import sys" >/dev/null 2>&1; then PY="$c"; break; fi
+done
+
+if [ -n "$PY" ]; then
+  "$PY" scripts/check_workflows.py || {
+    echo "pre-commit: fix the workflow files above, then commit again" >&2
+    exit 1
+  }
+else
+  echo "pre-commit: Python not found, workflow checks skipped" >&2
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner || {
+    echo "pre-commit: possible secret in staged changes, commit blocked" >&2
+    exit 1
+  }
+else
+  echo "pre-commit: gitleaks not installed, secret scan skipped" >&2
+fi
