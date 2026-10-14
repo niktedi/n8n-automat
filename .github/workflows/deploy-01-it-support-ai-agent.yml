@@ -1,0 +1,17 @@
+name: Deploy 01 · IT support AI agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "01-it-support-ai-agent/**"
+      - ".github/workflows/deploy-01-it-support-ai-agent.yml"
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-scenario.yml
+    with:
+      scenario: 01-it-support-ai-agent
+    secrets: inherit
+    

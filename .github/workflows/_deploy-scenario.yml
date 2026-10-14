@@ -40,23 +40,25 @@ jobs:
             > "$RUNNER_TEMP/creds.json"
           docker exec -u node "$N8N_CONTAINER" rm -f /tmp/deploy-creds.json
 
-      - name: Fill placeholders and map credentials
-        id: render
+      # Sub-workflows (*.workflow.json) first: the main workflow calls them by ID
+      - name: Render, import and publish workflows
         env:
           SECRETS_JSON: ${{ toJSON(secrets) }}
           GIT_SHA: ${{ github.sha }}
         run: |
-          ID=$(python3 scripts/render_workflow.py "${{ inputs.scenario }}/workflow.json" "$RUNNER_TEMP/workflow.json" "$RUNNER_TEMP/creds.json")
-          echo "workflow_id=$ID" >> "$GITHUB_OUTPUT"
-
-      - name: Import into n8n
-        run: |
-          docker exec -i -u node "$N8N_CONTAINER" sh -c 'cat > /tmp/deploy-workflow.json' < "$RUNNER_TEMP/workflow.json"
-          docker exec -u node "$N8N_CONTAINER" n8n import:workflow --input=/tmp/deploy-workflow.json
-          docker exec -u node "$N8N_CONTAINER" rm -f /tmp/deploy-workflow.json
-
-      - name: Publish
-        run: docker exec -u node "$N8N_CONTAINER" n8n publish:workflow --id="${{ steps.render.outputs.workflow_id }}"
+          set -euo pipefail
+          shopt -s nullglob
+          files=("${{ inputs.scenario }}"/*.workflow.json "${{ inputs.scenario }}/workflow.json")
+          for f in "${files[@]}"; do
+            echo "::group::$f"
+            ID=$(python3 scripts/render_workflow.py "$f" "$RUNNER_TEMP/render.json" "$RUNNER_TEMP/creds.json")
+            docker exec -i -u node "$N8N_CONTAINER" sh -c 'cat > /tmp/deploy-workflow.json' < "$RUNNER_TEMP/render.json"
+            docker exec -u node "$N8N_CONTAINER" n8n import:workflow --input=/tmp/deploy-workflow.json
+            docker exec -u node "$N8N_CONTAINER" n8n publish:workflow --id="$ID"
+            docker exec -u node "$N8N_CONTAINER" rm -f /tmp/deploy-workflow.json
+            rm -f "$RUNNER_TEMP/render.json"
+            echo "::endgroup::"
+          done
 
       # CLI publish takes effect only after a restart (n8n docs)
       - name: Restart n8n
@@ -76,4 +78,5 @@ jobs:
 
       - name: Clean up
         if: always()
-        run: rm -f "$RUNNER_TEMP/workflow.json" "$RUNNER_TEMP/creds.json"
+        run: rm -f "$RUNNER_TEMP/render.json" "$RUNNER_TEMP/creds.json"
+        
