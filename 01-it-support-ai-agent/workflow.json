@@ -65,7 +65,25 @@
             {
               "id": "3bf4f98b-4fc2-4f23-80d2-98f0e511124f",
               "name": "allowed_chat_id",
-              "value": "__ALLOWED_CHAT_ID__",
+              "value": "246475971",
+              "type": "string"
+            },
+            {
+              "id": "4eeca6d0-19e4-42ac-b55e-7d42df692e19",
+              "name": "services",
+              "value": "{\n  \"n8n-prod\": \"https://pipe.xdev.club/healthz\",\n  \"n8n-dev\": \"https://n8ndev.xdev.club/healthz\"\n}",
+              "type": "object"
+            },
+            {
+              "id": "8ad0bf1e-3045-42f8-998f-2b7f36bcf51a",
+              "name": "tickets_owner",
+              "value": "niktedi",
+              "type": "string"
+            },
+            {
+              "id": "9775a681-f0d6-4eba-8f81-8d37a0c757a7",
+              "name": "tickets_repo",
+              "value": "n8n-support-tickets",
               "type": "string"
             }
           ]
@@ -86,7 +104,7 @@
         "promptType": "define",
         "text": "={{ $('Telegram Trigger').first().json.message.text }}",
         "options": {
-          "systemMessage": "Ты — агент первой линии IT-поддержки сервера. Отвечай кратко, на языке пользователя.\nПрежде чем отвечать о состоянии сервера или сервисов, проверяй его инструментами, не угадывай.\nЕсли инструмента для нужной проверки нет, честно скажи об этом.\n\nЧтобы выяснить причину проблемы с сервисом, сначала посмотри server_status, потом логи нужного контейнера."
+          "systemMessage": "You are a first-line IT support agent for a Linux server that runs services in Docker.\nReply briefly, in the user's language.\nBefore answering about the state of the server or a service, check it with your tools; never guess.\nTo find the cause of a problem with a service, call server_status first, then read the logs of the relevant container.\nIf a container is running but the user says the service does not work, check it with check_service.\nWhen the cause is clear or the user asks what to do, find the instructions with search_kb and follow them.\nIf you have no tool for the needed check, say so honestly.\nOpen a ticket with create_issue only after the user agrees. After creating it, give the user the issue link."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -166,7 +184,7 @@
     },
     {
       "parameters": {
-        "description": "Показывает uptime и нагрузку сервера, а также список всех Docker-контейнеров с их статусом (Up / Exited / healthy). Используй, когда спрашивают, работает ли сервер или сервис, что запущено, или почему что-то тормозит или не отвечает.",
+        "description": "Shows server uptime and load, and the list of all Docker containers with their status (Up / Exited / healthy). Use it when asked whether the server or a service is running, what is running, or why something is slow or not responding.",
         "workflowId": {
           "__rl": true,
           "value": "AhJp0Eu6L5aVl4Dz",
@@ -201,8 +219,8 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        -112,
-        272
+        -256,
+        304
       ],
       "id": "c232798b-84cb-47c7-89ee-9d48d6c7d125",
       "name": "server_status"
@@ -222,7 +240,7 @@
     },
     {
       "parameters": {
-        "description": "Показывает занятое и свободное место на дисках сервера. Используй, когда спрашивают про место на диске, или когда сервисы падают и есть подозрение, что диск заполнен.",
+        "description": "Shows used and free space on the server disks. Use it when asked about disk space, or when services fail and the disk may be full.",
         "workflowId": {
           "__rl": true,
           "value": "AhJp0Eu6L5aVl4Dz",
@@ -257,15 +275,15 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        48,
-        192
+        -128,
+        320
       ],
       "id": "ab14c868-994d-42a4-b883-72085a379e9d",
       "name": "disk_usage"
     },
     {
       "parameters": {
-        "description": "Показывает последние 50 строк лога указанного Docker-контейнера. Используй, чтобы выяснить, почему контейнер упал, перезапускается или работает с ошибками.",
+        "description": "Shows the last 50 lines of the log of the given Docker container. Use it to find out why a container crashed, keeps restarting or reports errors.",
         "workflowId": {
           "__rl": true,
           "value": "AhJp0Eu6L5aVl4Dz",
@@ -300,11 +318,98 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        240,
-        304
+        144,
+        320
       ],
       "id": "9f56d14b-f09d-4c35-b377-c4cfd1b0f864",
       "name": "container_logs"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Checks whether a service responds over HTTP and returns the status code. Available services: n8n-prod, n8n-dev. Use it when asked whether a service is available or opens for users.",
+        "url": "={{ $('Config').first().json.services[$fromAI('service', 'Service name: n8n-prod or n8n-dev', 'string')] }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        16,
+        336
+      ],
+      "id": "b211e239-2127-4bee-bd7e-52abad750726",
+      "name": "check_service"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Searches the internal support knowledge base for instructions on common problems (n8n down, disk full, container restarting, bot not responding) and on when to open a ticket. Pass the problem keywords in English; translate them if the user wrote in another language.",
+        "operation": "executeQuery",
+        "query": "WITH q AS (\n  SELECT replace(plainto_tsquery('english', $1)::text, ' & ', ' | ')::tsquery AS query\n)\nSELECT a.title, a.body\nFROM kb.articles a, q\nWHERE a.search @@ q.query\nORDER BY ts_rank(a.search, q.query) DESC\nLIMIT 3;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('query', 'Problem keywords in English', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.7,
+      "position": [
+        304,
+        288
+      ],
+      "id": "ea644ac0-f183-4823-815b-b3a71a404763",
+      "name": "search_kb",
+      "credentials": {
+        "postgres": {
+          "id": "6ABLFWFelWMAjk3E",
+          "name": "Postgres automation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Opens a ticket (GitHub issue) for the server administrator. Use it only when the problem needs action on the server or its cause is not found, and only after the user has confirmed that a ticket should be opened. Returns the issue link.",
+        "owner": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.tickets_owner }}",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.tickets_repo }}",
+          "mode": "name"
+        },
+        "title": "={{ $fromAI('title', 'Short summary of the problem, under 80 characters', 'string') }}",
+        "body": "={{ $fromAI('body', 'Ticket body in Markdown: symptom, what was checked, key tool outputs (short), suspected cause', 'string') }}",
+        "labels": [
+          {
+            "label": "support-bot"
+          }
+        ],
+        "assignees": []
+      },
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        208
+      ],
+      "id": "b93310d7-7272-400c-a32a-3c4e8d7af46c",
+      "name": "create_issue",
+      "webhookId": "b09187a9-018e-4190-962a-7e047c0b58af",
+      "credentials": {
+        "githubApi": {
+          "id": "ab8IgWl9IYYVW4jC",
+          "name": "GitHub support tickets"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -423,6 +528,39 @@
           }
         ]
       ]
+    },
+    "check_service": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_kb": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_issue": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -430,7 +568,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "16c3ecfd-096d-49d6-809d-74b7da3d07da",
+  "versionId": "24512c81-d06f-4be2-9338-508dc107641e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
