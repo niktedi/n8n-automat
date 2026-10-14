@@ -65,7 +65,7 @@
             {
               "id": "3bf4f98b-4fc2-4f23-80d2-98f0e511124f",
               "name": "allowed_chat_id",
-              "value": "246475971",
+              "value": "__ALLOWED_CHAT_ID__",
               "type": "string"
             },
             {
