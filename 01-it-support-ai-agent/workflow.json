@@ -1,0 +1,441 @@
+{
+  "name": "01 IT Support AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        -160
+      ],
+      "id": "58931f8f-4afa-48ed-957f-f1d30960f6cb",
+      "name": "Telegram Trigger",
+      "webhookId": "b6e17b33-8853-4c04-9132-f9e1d989c7dc",
+      "credentials": {
+        "telegramApi": {
+          "id": "rKBIIDvJGKnIG7iS",
+          "name": "Telegram 01 support"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d1691320-4f52-47d4-81fb-6441b873d001",
+              "leftValue": "={{ String($('Telegram Trigger').first().json.message.chat.id) }}",
+              "rightValue": "={{ $('Config').first().json.allowed_chat_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        -160
+      ],
+      "id": "206d17a9-a5e9-48c4-98c8-4c0ee5a94ab1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3bf4f98b-4fc2-4f23-80d2-98f0e511124f",
+              "name": "allowed_chat_id",
+              "value": "__ALLOWED_CHAT_ID__",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -400,
+        -160
+      ],
+      "id": "9175cb02-9a37-4175-8339-efa01945e371",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').first().json.message.text }}",
+        "options": {
+          "systemMessage": "Ты — агент первой линии IT-поддержки сервера. Отвечай кратко, на языке пользователя.\nПрежде чем отвечать о состоянии сервера или сервисов, проверяй его инструментами, не угадывай.\nЕсли инструмента для нужной проверки нет, честно скажи об этом.\n\nЧтобы выяснить причину проблемы с сервисом, сначала посмотри server_status, потом логи нужного контейнера."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -16,
+        -176
+      ],
+      "id": "30005aa2-a7ae-4363-9853-69df57ba5974",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "google/gemma-4-31b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "41d3e593-4f88-4962-a856-f7ed4abdc87c",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "JOlJQO9PC2CC4gEN",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.4,
+      "position": [
+        -112,
+        16
+      ],
+      "id": "654adc08-1273-4ce5-8c8a-3013df15a811",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "6ABLFWFelWMAjk3E",
+          "name": "Postgres automation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        -176
+      ],
+      "id": "0e8e8b79-b7cf-442f-a03b-6f4a36c11fb4",
+      "name": "Send a text message",
+      "webhookId": "858af357-33c8-4e49-b565-83fd9e4d81b6",
+      "credentials": {
+        "telegramApi": {
+          "id": "rKBIIDvJGKnIG7iS",
+          "name": "Telegram 01 support"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Показывает uptime и нагрузку сервера, а также список всех Docker-контейнеров с их статусом (Up / Exited / healthy). Используй, когда спрашивают, работает ли сервер или сервис, что запущено, или почему что-то тормозит или не отвечает.",
+        "workflowId": {
+          "__rl": true,
+          "value": "AhJp0Eu6L5aVl4Dz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AhJp0Eu6L5aVl4Dz",
+          "cachedResultName": "01 IT Support · SSH runner"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "command": "status"
+          },
+          "matchingColumns": [
+            "command"
+          ],
+          "schema": [
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        272
+      ],
+      "id": "c232798b-84cb-47c7-89ee-9d48d6c7d125",
+      "name": "server_status"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. обрезаем до лимита Telegram (4096) ещё ДО разметки, чтобы не разрезать тег\nlet text = ($json.output ?? '').slice(0, 3800);\n\n// 2. экранируем всё, что HTML-парсер Telegram считает разметкой\ntext = text\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;');\n\n// 3. переводим частые элементы Markdown в HTML\ntext = text\n  .replace(/```(?:\\w+)?\\n?([\\s\\S]*?)```/g, '<pre>$1</pre>')   // блок кода\n  .replace(/`([^`\\n]+)`/g, '<code>$1</code>')                 // код в строке\n  .replace(/^\\s*[*-] /gm, '• ')                               // пункты списка\n  .replace(/\\*\\*([^*\\n]+)\\*\\*/g, '<b>$1</b>');                // жирный\n\nreturn { json: { text } };;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -176
+      ],
+      "id": "0b2de511-6392-4b17-a92f-dd2eb6b3b0e4",
+      "name": "Format for telegram"
+    },
+    {
+      "parameters": {
+        "description": "Показывает занятое и свободное место на дисках сервера. Используй, когда спрашивают про место на диске, или когда сервисы падают и есть подозрение, что диск заполнен.",
+        "workflowId": {
+          "__rl": true,
+          "value": "AhJp0Eu6L5aVl4Dz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AhJp0Eu6L5aVl4Dz",
+          "cachedResultName": "01 IT Support · SSH runner"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "command": "disk"
+          },
+          "matchingColumns": [
+            "command"
+          ],
+          "schema": [
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        192
+      ],
+      "id": "ab14c868-994d-42a4-b883-72085a379e9d",
+      "name": "disk_usage"
+    },
+    {
+      "parameters": {
+        "description": "Показывает последние 50 строк лога указанного Docker-контейнера. Используй, чтобы выяснить, почему контейнер упал, перезапускается или работает с ошибками.",
+        "workflowId": {
+          "__rl": true,
+          "value": "AhJp0Eu6L5aVl4Dz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AhJp0Eu6L5aVl4Dz",
+          "cachedResultName": "01 IT Support · SSH runner"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "command": "={{ 'logs ' + $fromAI('container', 'Точное имя Docker-контейнера из вывода server_status', 'string') }}"
+          },
+          "matchingColumns": [
+            "command"
+          ],
+          "schema": [
+            {
+              "id": "command",
+              "displayName": "command",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        304
+      ],
+      "id": "9f56d14b-f09d-4c35-b377-c4cfd1b0f864",
+      "name": "container_logs"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format for telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "server_status": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Format for telegram": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "disk_usage": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "container_logs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "16c3ecfd-096d-49d6-809d-74b7da3d07da",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "2sSkq4VVP5Nmtp4h",
+  "tags": []
+}

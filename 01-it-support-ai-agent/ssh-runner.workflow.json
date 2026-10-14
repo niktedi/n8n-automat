@@ -1,0 +1,71 @@
+{
+  "name": "01 IT Support · SSH runner",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "command"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        -208
+      ],
+      "id": "35711bfc-0313-4662-8b3c-46b75bdb88b1",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ $json.command }}"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -208
+      ],
+      "id": "753ae904-4b73-4531-a347-5e4c5d016aa5",
+      "name": "Execute a command",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "fNw0Yk9AeqQGreJq",
+          "name": "SSH n8n-support"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c3038fe7-f4b9-44de-af38-84b8b5db80da",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "AhJp0Eu6L5aVl4Dz",
+  "tags": []
+}

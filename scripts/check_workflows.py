@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate exported n8n workflows before they are committed or deployed.
 
-Checks every */workflow.json (and infra/*-workflow.json):
+Checks every */*workflow.json (and infra/*-workflow.json):
   - the file is valid JSON with the shape of an n8n workflow;
   - no pinned test data is left in the export;
   - no values that look like secrets or real Telegram chat IDs are hardcoded
@@ -76,7 +76,8 @@ def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
 
-    files = sorted(ROOT.glob("*/workflow.json")) + sorted(ROOT.glob("infra/*-workflow.json"))
+    #files = sorted(ROOT.glob("*/workflow.json")) + sorted(ROOT.glob("infra/*-workflow.json"))
+    files = sorted(ROOT.glob("*/*workflow.json")) + sorted(ROOT.glob("infra/*-workflow.json"))
     if not files:
         print("No workflow files found yet — nothing to check.")
         return 0
