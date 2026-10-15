@@ -1,0 +1,39 @@
+#!/bin/bash
+# Forced-command wrapper for the SSH tools of the IT support agent (scenario 01).
+#
+# sshd runs this script for every connection made with the n8n-support key
+# (command="..." in authorized_keys). The requested command arrives in
+# SSH_ORIGINAL_COMMAND; it is split into words and checked against an allowlist,
+# never executed as-is and never passed to a shell.
+set -euo pipefail
+
+# Audit log: every request, allowed or not -> journalctl -t support-wrapper
+client="${SSH_CLIENT:-local}"
+logger -t support-wrapper "from=${client%% *} cmd=${SSH_ORIGINAL_COMMAND:-<empty>}"
+
+read -r -a args <<< "${SSH_ORIGINAL_COMMAND:-}"
+
+case "${args[0]:-}" in
+  status)
+    [[ ${#args[@]} -eq 1 ]] || { echo "usage: status"; exit 2; }
+    uptime
+    docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+    ;;
+  disk)
+    [[ ${#args[@]} -eq 1 ]] || { echo "usage: disk"; exit 2; }
+    df -h -x tmpfs -x overlay
+    ;;
+  logs)
+    [[ ${#args[@]} -eq 2 ]] || { echo "usage: logs <container>"; exit 2; }
+    name="${args[1]}"
+    # letters, digits, _ . - ; must not start with "-" (no flags instead of a name)
+    [[ "$name" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$ ]] || { echo "invalid container name"; exit 2; }
+    # the container must exist; no -q: with pipefail an early grep exit would break the pipe
+    docker ps -a --format '{{.Names}}' | grep -Fx -- "$name" > /dev/null || { echo "unknown container"; exit 2; }
+    docker logs --tail 50 "$name" 2>&1
+    ;;
+  *)
+    echo "not allowed. allowed: status | disk | logs <container>"
+    exit 2
+    ;;
+esac
