@@ -4,7 +4,8 @@ A Telegram bot that works as first-line IT support for a Linux server running se
 
 Built in n8n, deployed from Git to a self-hosted n8n by CI.
 
-> **Demo:** _link to the demo video_
+> **Demo:** 
+[01 IT support bot demo video](https://vimeo.com/1236476626)
 
 ## What it does
 

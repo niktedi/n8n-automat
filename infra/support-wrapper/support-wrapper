@@ -1,10 +1,5 @@
 #!/bin/bash
-# Forced-command wrapper for the SSH tools of the IT support agent (scenario 01).
-#
-# sshd runs this script for every connection made with the n8n-support key
-# (command="..." in authorized_keys). The requested command arrives in
-# SSH_ORIGINAL_COMMAND; it is split into words and checked against an allowlist,
-# never executed as-is and never passed to a shell.
+
 set -euo pipefail
 
 # Audit log: every request, allowed or not -> journalctl -t support-wrapper
