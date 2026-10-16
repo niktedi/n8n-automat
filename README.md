@@ -14,7 +14,7 @@ Each scenario solves one concrete process and is built the way it would run in p
 | # | Scenario | Status |
 |---|---|---|
 | 00 | [Telegram smoke bot](00-telegram-smoke-bot/README.md): checks the whole CI/CD pipeline | Done |
-| 01 | [IT support AI agent](01-it-support-ai-agent/README.md): Telegram bot that diagnoses the server, follows a knowledge base and opens GitHub issues | Done, [demo video](https://example.com/replace-with-video-link) |
+| 01 | [IT support AI agent](01-it-support-ai-agent/README.md): Telegram bot that diagnoses the server, follows a knowledge base and opens GitHub issues [demo video](https://vimeo.com/1236476626) | Done
 | 02 | — | In progress |
 | 03 | — | In progress |
 | 04 | — | In progress |
