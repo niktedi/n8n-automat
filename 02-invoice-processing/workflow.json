@@ -192,13 +192,12 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        1088,
-        -208
+        1248,
+        -224
       ],
       "id": "54b14f57-9678-49b2-ae73-9668beca503c",
       "name": "Extract invoice",
-      "retryOnFail": true,
-      "onError": "continueErrorOutput"
+      "retryOnFail": true
     },
     {
       "parameters": {
@@ -294,31 +293,31 @@
             {
               "id": "475b57d8-9f2f-43e6-b725-7e46107b0988",
               "name": "messageId",
-              "value": "={{ $('Attachment').item.json.messageId}}",
+              "value": "={{ $('Prepare').all()[$itemIndex].json.messageId }}",
               "type": "string"
             },
             {
               "id": "fa00c6fe-6e8a-42db-965f-9e206412d57b",
               "name": "subject",
-              "value": "={{ $('Attachment').item.json.subject}}",
+              "value": "={{ $('Prepare').all()[$itemIndex].json.subject }}",
               "type": "string"
             },
             {
               "id": "d4d6d5a6-0f15-4580-89de-2ba90ada9b7b",
               "name": "from",
-              "value": "={{ $('Attachment').item.json.from}}",
+              "value": "={{ $('Prepare').all()[$itemIndex].json.from }}",
               "type": "string"
             },
             {
               "id": "def83706-82c6-45e5-8a9c-80fe7b07d15d",
               "name": "fileName",
-              "value": "={{ $('Attachment').item.json.fileName }}",
+              "value": "={{ $('Prepare').all()[$itemIndex].json.fileName }}",
               "type": "string"
             },
             {
               "id": "0822aae6-82f6-49f2-bfb2-e630b0744d3a",
               "name": "contentBytes",
-              "value": "={{ $('Attachment').item.json.contentBytes }}",
+              "value": "={{ $('Prepare').all()[$itemIndex].json.contentBytes }}",
               "type": "string"
             },
             {
@@ -1191,11 +1190,64 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.4,
       "position": [
-        -960,
-        -240
+        -944,
+        -208
       ],
       "id": "38907008-ab28-4385-b6a6-476774c3507f",
       "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "da8e349a-2f78-476b-a62d-3e5de7ff03a7",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "e4a39511-3920-4947-aee6-adada28e7a3b",
+              "name": "messageId",
+              "value": "={{ $('Attachment').item.json.messageId }}",
+              "type": "string"
+            },
+            {
+              "id": "1e227bed-ebf2-4cf6-9107-d0ae5e88d448",
+              "name": "subject",
+              "value": "={{ $('Attachment').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "c9e7e1cc-f4a9-4e89-ae87-2eaab16d7ca2",
+              "name": "from",
+              "value": "={{ $('Attachment').item.json.from }}",
+              "type": "string"
+            },
+            {
+              "id": "4d6ad124-f70f-42ea-b97d-5c26a35a1b82",
+              "name": "fileName",
+              "value": "={{ $('Attachment').item.json.fileName }}",
+              "type": "string"
+            },
+            {
+              "id": "f6396f2f-adbe-495d-9c99-6709cd46b780",
+              "name": "contentBytes",
+              "value": "={{ $('Attachment').item.json.contentBytes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1088,
+        -400
+      ],
+      "id": "5921ae4a-e540-49ee-a3a6-dca906eedca7",
+      "name": "Prepare"
     }
   ],
   "pinData": {},
@@ -1315,13 +1367,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Unreadable",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Invoice data": {
@@ -1673,7 +1719,7 @@
       "main": [
         [
           {
-            "node": "Extract invoice",
+            "node": "Prepare",
             "type": "main",
             "index": 0
           }
@@ -1729,6 +1775,17 @@
           }
         ]
       ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Extract invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1740,7 +1797,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "005dde64-2215-4954-a628-b19047cb0596",
+  "versionId": "62216dae-4e83-4f19-b9a7-c0bfee9764be",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
