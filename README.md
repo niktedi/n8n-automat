@@ -15,7 +15,7 @@ Each scenario solves one concrete process and is built the way it would run in p
 |---|---|---|
 | 00 | [Telegram smoke bot](00-telegram-smoke-bot/README.md): checks the whole CI/CD pipeline | Done |
 | 01 | [IT support AI agent](01-it-support-ai-agent/README.md): Telegram bot that diagnoses the server, follows a knowledge base and opens GitHub issues | Done · [demo video](https://vimeo.com/1236476626) |
-| 02 | [Invoice processing](02-invoice-processing/README.md): PDF invoices from a mailbox are read by an LLM, checked in code (NIP, totals, VAT white list, NBP rates), approved in Telegram and kept in a Postgres register | Done · demo video soon |
+| 02 | [Invoice processing](02-invoice-processing/README.md): PDF invoices from a mailbox are read by an LLM, checked in code (NIP, totals, VAT white list, NBP rates), approved in Telegram and kept in a Postgres register | Done · [demo video](https://vimeo.com/1237086810) |
 | 03 | — | In progress |
 | 04 | — | In progress |
 
