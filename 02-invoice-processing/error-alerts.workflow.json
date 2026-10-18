@@ -43,7 +43,7 @@
             {
               "id": "af9cafd8-9996-42c3-981b-af868ebe69ad",
               "name": "admin_chat_id",
-              "value": "246475971",
+              "value": "__ALLOWED_CHAT_ID__",
               "type": "string"
             }
           ]

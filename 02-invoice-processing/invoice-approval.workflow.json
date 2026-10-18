@@ -31,7 +31,7 @@
             {
               "id": "1541ce36-23b2-43b5-ad8c-cfbf72a941c6",
               "name": "approver_chat_id",
-              "value": "246475971",
+              "value": "__ALLOWED_CHAT_ID__",
               "type": "string"
             }
           ]
