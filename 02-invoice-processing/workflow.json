@@ -2,17 +2,6 @@
   "name": "02 Invoice processing",
   "nodes": [
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        -896,
-        -224
-      ],
-      "id": "753c164e-f314-4fe8-9318-7ddb04c607fa",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
       "parameters": {
         "fieldToSplitOut": "value",
         "options": {}
@@ -1188,21 +1177,29 @@
           "name": "Microsoft Graph invoices"
         }
       }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -960,
+        -240
+      ],
+      "id": "38907008-ab28-4385-b6a6-476774c3507f",
+      "name": "Schedule Trigger"
     }
   ],
   "pinData": {},
   "connections": {
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Split messages": {
       "main": [
         [
@@ -1721,6 +1718,17 @@
           }
         ]
       ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1732,7 +1740,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "a0ad702a-c1f7-4b1f-b907-c63c47d50045",
+  "versionId": "005dde64-2215-4954-a628-b19047cb0596",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
