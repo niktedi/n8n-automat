@@ -1,0 +1,101 @@
+{
+  "name": "Error alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        -96
+      ],
+      "id": "6743fa3b-0914-4428-888d-94c46be8cdf7",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.admin_chat_id }}",
+        "text": "=🚨 Workflow failed: {{ $('Error Trigger').first().json.workflow.name }}\nNode: {{ $('Error Trigger').first().json.execution?.lastNodeExecuted ?? 'trigger' }}\nError: {{ ($('Error Trigger').first().json.execution?.error?.message ?? $('Error Trigger').first().json.trigger?.error?.message ?? 'unknown').slice(0, 500) }}\nMode: {{ $('Error Trigger').first().json.execution?.mode ?? 'trigger' }}\nTime: {{ $now.setZone('Europe/Warsaw').toFormat('yyyy-MM-dd HH:mm') }}\nExecution: {{ $('Error Trigger').first().json.execution?.url ?? '—' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        -96
+      ],
+      "id": "3465b46e-00f3-4b01-b91c-8e3b2e8477d4",
+      "name": "Send a text message",
+      "webhookId": "2714f68f-18cc-4b17-9f82-705b0c80753c",
+      "credentials": {
+        "telegramApi": {
+          "id": "0WXAHGgjA4zuUMPF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "af9cafd8-9996-42c3-981b-af868ebe69ad",
+              "name": "admin_chat_id",
+              "value": "246475971",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -656,
+        -96
+      ],
+      "id": "522f95c1-2edd-45c8-8d57-2d201b11feb0",
+      "name": "Config"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d8f6f697-d92a-4fbb-b97a-e1e5285b581c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "4PASS4m6Neq5To5u",
+  "tags": []
+}

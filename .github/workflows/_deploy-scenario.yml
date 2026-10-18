@@ -5,7 +5,7 @@ on:
   workflow_call:
     inputs:
       scenario:
-        description: 00-telegram-smoke-bot
+        description: folder with the workflows, e.g. 02-invoice-processing or infra
         required: true
         type: string
 
@@ -50,6 +50,7 @@ jobs:
           shopt -s nullglob
           files=("${{ inputs.scenario }}"/*.workflow.json "${{ inputs.scenario }}/workflow.json")
           for f in "${files[@]}"; do
+            [[ -f "$f" ]] || continue   # infra/ has no workflow.json, only *.workflow.json
             echo "::group::$f"
             ID=$(python3 scripts/render_workflow.py "$f" "$RUNNER_TEMP/render.json" "$RUNNER_TEMP/creds.json")
             docker exec -i -u node "$N8N_CONTAINER" sh -c 'cat > /tmp/deploy-workflow.json' < "$RUNNER_TEMP/render.json"

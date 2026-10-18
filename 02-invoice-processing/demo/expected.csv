@@ -1,0 +1,13 @@
+file,invoice_number,seller_nip,currency,net,vat,gross_printed,expected_status,reason
+01_FV-2026-10-0142.pdf,FV/2026/10/0142,5261040567,PLN,189.00,43.47,232.47,booked,all checks pass
+02_FS-27-10-2026.pdf,FS/27/10/2026,1182198220,PLN,585.36,46.83,632.19,booked,"all checks pass, VAT 8%"
+03_2026-10-017.pdf,2026/10/017,5213641211,PLN,2400.00,552.00,2952.00,booked,all checks pass
+04_FV-2026-10-0198.pdf,FV/2026/10/0198,5261040567,PLN,40.65,9.35,50.00,booked,"all checks pass, small amount"
+05_FS-31-10-2026.pdf,FS/31/10/2026,1182198220,PLN,428.72,41.61,470.33,booked,"all checks pass, two VAT rates"
+06_NWC-2026-10-0081.pdf,NWC-2026-10-0081,DE123456789,EUR,200.50,0.00,200.50,booked,EUR: NBP rate from the business day before the date of supply
+07_2026-10-021.pdf,2026/10/021,5213641211,PLN,14800.00,3404.00,18204.00,needs_review,gross above approval threshold -> Telegram approval
+08_FS-27-10-2026.pdf,FS/27/10/2026,1182198220,PLN,585.36,46.83,632.19,duplicate,"same seller NIP + number as invoice 02, different file"
+09_FV-2026-10-0211.pdf,FV/2026/10/0211,5261040567,PLN,329.27,75.73,415.00,error,net + VAT != gross (printed gross is 10.00 too high)
+10_2026-10-024.pdf,2026/10/024,5213641211,PLN,2000.00,460.00,2460.00,needs_review,bank account not on the VAT white list
+11_FV-2026-10-0219.pdf,FV/2026/10/0219,5261040568,PLN,150.00,34.50,184.50,error,seller NIP has an invalid checksum
+12_FS-35-10-2026.pdf,FS/35/10/2026,1182198220,PLN,520.00,41.60,561.60,error,due date is before the issue date

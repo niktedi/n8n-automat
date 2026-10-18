@@ -1,0 +1,19 @@
+[project]
+name = "n8n-automat"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "niktedi", email = "nikpost@gmx.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "reportlab>=5.0.1",
+]
+
+[project.scripts]
+n8n-automat = "n8n_automat:main"
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"

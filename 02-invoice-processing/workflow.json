@@ -1,0 +1,1743 @@
+{
+  "name": "02 Invoice processing",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        -224
+      ],
+      "id": "753c164e-f314-4fe8-9318-7ddb04c607fa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "value",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -224
+      ],
+      "id": "08677489-8bc1-4cdd-84f3-b4c72534e8b4",
+      "name": "Split messages"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.id }}/attachments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -64,
+        -224
+      ],
+      "id": "a3d5adb4-b168-43b1-a2e1-4fce123fe4e2",
+      "name": "Get attachments",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "aeuju9s4PWnhaBpy",
+          "name": "Microsoft Graph invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8b3ce9dc-e628-4a46-8ea8-4010be2a4f5a",
+              "leftValue": "={{ $json.contentType }}",
+              "rightValue": "application/pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "4f9efda6-1dd1-4d29-bff6-996453177b93",
+              "leftValue": "={{ $json.name.toLowerCase() }}",
+              "rightValue": ".pdf",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        -224
+      ],
+      "id": "b390bfff-5299-41ef-9121-89443a2bbbe3",
+      "name": "Only PDF"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "value",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -224
+      ],
+      "id": "4fb23548-ac7e-443a-880b-58ca38f74bfc",
+      "name": "Split attachments"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f4a96474-86ea-4b3a-9a0c-557cc0fb3bf3",
+              "name": "messageId",
+              "value": "={{ $('Split messages').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "1a5db111-cd34-4e19-8036-bab3aa105c3b",
+              "name": "subject",
+              "value": "={{ $('Split messages').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "1cf7c451-393c-4028-85cb-10f5081c6177",
+              "name": "from",
+              "value": "={{ $('Split messages').item.json.from.emailAddress.address }}",
+              "type": "string"
+            },
+            {
+              "id": "8ba7d81f-be8f-440f-bcfa-115a73c40864",
+              "name": "fileName",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "5cff4937-00b9-42a8-bef9-12ebac704b3a",
+              "name": "contentBytes",
+              "value": "={{ $json.contentBytes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        416,
+        -224
+      ],
+      "id": "06666017-1be8-4d7d-a163-9d116c9d0071",
+      "name": "Attachment"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "contentBytes",
+        "options": {
+          "fileName": "={{ $json.fileName }}",
+          "mimeType": "application/pdf"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        -224
+      ],
+      "id": "4d7b00c0-b56f-4f77-bcc8-b05cd221ad20",
+      "name": "To PDF"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -224
+      ],
+      "id": "8fe2bde5-e641-4723-a7ef-6bb16daa34dd",
+      "name": "PDF to text",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You extract data from Polish and foreign invoices. Return only the fields of the schema.  Rules: - Copy values exactly as printed. Never calculate, correct or complete anything.   If the printed total looks wrong, still return the printed value. - Amounts: string with a dot as decimal separator and no thousands separators, e.g. \"14800.00\". - Dates: YYYY-MM-DD. - seller = party under \"Sprzedawca\" / \"Supplier\"; buyer = party under \"Nabywca\" / \"Customer\".   In the text the two headers may stand on one line, followed first by the seller block, then the buyer block. - nip: 10 digits only, no dashes, no \"PL\" prefix. Foreign VAT IDs (e.g. \"DE123456789\") go to vat_id, nip stays null. - bank_account: digits only for Polish accounts (26 digits); IBAN without spaces for foreign ones. - If a field is not on the invoice, return null. - Ignore watermark and footer lines (\"DEMO\", \"Generated by ...\").\n\n- category: choose exactly one value from the schema enum based on what was bought\n  (line descriptions and seller). If none fits or you are unsure, use \"other\"."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1088,
+        -208
+      ],
+      "id": "54b14f57-9678-49b2-ae73-9668beca503c",
+      "name": "Extract invoice",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "google/gemma-4-31b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "0f2a1a1e-17ad-4171-b1e9-6ce9947f7889",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "JOlJQO9PC2CC4gEN",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"invoice_number\": { \"type\": \"string\" },\n    \"issue_date\":     { \"type\": [\"string\", \"null\"] },\n    \"sale_date\":      { \"type\": [\"string\", \"null\"] },\n    \"due_date\":       { \"type\": [\"string\", \"null\"] },\n    \"currency\":       { \"type\": \"string\" },\n    \"seller\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"name\":    { \"type\": \"string\" },\n        \"nip\":     { \"type\": [\"string\", \"null\"] },\n        \"vat_id\":  { \"type\": [\"string\", \"null\"] },\n        \"address\": { \"type\": [\"string\", \"null\"] }\n      },\n      \"required\": [\"name\", \"nip\", \"vat_id\"]\n    },\n    \"buyer\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"name\": { \"type\": \"string\" },\n        \"nip\":  { \"type\": [\"string\", \"null\"] }\n      },\n      \"required\": [\"name\", \"nip\"]\n    },\n    \"bank_account\":   { \"type\": [\"string\", \"null\"] },\n    \"net_amount\":     { \"type\": \"string\" },\n    \"vat_amount\":     { \"type\": \"string\" },\n    \"gross_amount\":   { \"type\": \"string\" },\n    \"reverse_charge\": { \"type\": \"boolean\" },\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\"telecom\", \"software\", \"cloud_hosting\", \"it_services\", \"catering\", \"office\", \"other\"]\n    },\n    \"lines\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"description\": { \"type\": \"string\" },\n          \"quantity\":    { \"type\": \"string\" },\n          \"net_amount\":  { \"type\": \"string\" },\n          \"vat_rate\":    { \"type\": \"string\" }\n        },\n        \"required\": [\"description\", \"net_amount\", \"vat_rate\"]\n      }\n    }\n  },\n  \"required\": [\"invoice_number\", \"issue_date\", \"sale_date\", \"due_date\", \"currency\",\n               \"seller\", \"buyer\", \"bank_account\", \"net_amount\", \"vat_amount\",\n               \"gross_amount\", \"reverse_charge\", \"category\", \"lines\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "a3954693-e7c2-47e6-8d7f-f44ca146f616",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "757868cc-511c-4cc2-bcd0-eabcdc2e00df",
+              "name": "our_nip",
+              "value": "1234563218",
+              "type": "string"
+            },
+            {
+              "id": "214cf11a-b793-4f99-8812-8d978a5658d1",
+              "name": "approval_threshold_pln",
+              "value": 15000,
+              "type": "number"
+            },
+            {
+              "id": "4dc80d2b-99da-4360-86aa-18024d18d130",
+              "name": "cost_centers",
+              "value": "={{ { telecom: 'MPK-IT', software: 'MPK-IT', cloud_hosting: 'MPK-IT', it_services: 'MPK-IT', catering: 'MPK-HR', office: 'MPK-ADM' } }}",
+              "type": "object"
+            },
+            {
+              "id": "af9cafd8-9996-42c3-981b-af868ebe69ad",
+              "name": "approver_chat_id",
+              "value": "246475971",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -752,
+        -224
+      ],
+      "id": "bc46e638-185d-4cf7-8012-abfea1ebac14",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f6ce3c5d-be57-4946-88e1-97c794473586",
+              "name": "invoice",
+              "value": "={{ $json.output }}",
+              "type": "object"
+            },
+            {
+              "id": "05ea0df5-6a23-48eb-a0fa-0475e15986b2",
+              "name": "=our_nip",
+              "value": "={{ $('Config').first().json.our_nip}}",
+              "type": "string"
+            },
+            {
+              "id": "475b57d8-9f2f-43e6-b725-7e46107b0988",
+              "name": "messageId",
+              "value": "={{ $('Attachment').item.json.messageId}}",
+              "type": "string"
+            },
+            {
+              "id": "fa00c6fe-6e8a-42db-965f-9e206412d57b",
+              "name": "subject",
+              "value": "={{ $('Attachment').item.json.subject}}",
+              "type": "string"
+            },
+            {
+              "id": "d4d6d5a6-0f15-4580-89de-2ba90ada9b7b",
+              "name": "from",
+              "value": "={{ $('Attachment').item.json.from}}",
+              "type": "string"
+            },
+            {
+              "id": "def83706-82c6-45e5-8a9c-80fe7b07d15d",
+              "name": "fileName",
+              "value": "={{ $('Attachment').item.json.fileName }}",
+              "type": "string"
+            },
+            {
+              "id": "0822aae6-82f6-49f2-bfb2-e630b0744d3a",
+              "name": "contentBytes",
+              "value": "={{ $('Attachment').item.json.contentBytes }}",
+              "type": "string"
+            },
+            {
+              "id": "8f9429b8-3915-4747-a8f3-065327cba00c",
+              "name": "approval_threshold_pln",
+              "value": "={{ $('Config').first().json.approval_threshold_pln }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -656,
+        64
+      ],
+      "id": "d7e63615-6a23-4e24-a709-5cf7a88cebb8",
+      "name": "Invoice data"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# n8n Code node \"Validate\" (Python, Run Once for All Items)\n# Deterministic checks of the data the LLM extracted. No network, no database.\n# Input item fields: invoice (LLM output), our_nip, contentBytes, fileName, messageId, ...\n# Output: the same item plus file_sha256, amounts (normalized) and checks {errors, warnings}.\n\nimport base64\nimport hashlib\nimport re\nfrom datetime import date\nfrom decimal import Decimal, InvalidOperation\n\nNIP_WEIGHTS = (6, 5, 7, 2, 3, 4, 5, 6, 7)\n\n\ndef nip_valid(nip):\n    if not nip or not re.fullmatch(r\"\\d{10}\", nip):\n        return False\n    return sum(int(d) * w for d, w in zip(nip, NIP_WEIGHTS)) % 11 == int(nip[9])\n\n\ndef iban_valid(iban):\n    \"\"\"Polish 26-digit account (NRB) or a full IBAN; checks the mod-97 checksum.\"\"\"\n    s = re.sub(r\"\\s\", \"\", iban or \"\").upper()\n    if re.fullmatch(r\"\\d{26}\", s):\n        s = \"PL\" + s\n    if not re.fullmatch(r\"[A-Z]{2}\\d{2}[A-Z0-9]{10,30}\", s):\n        return False\n    moved = s[4:] + s[:4]\n    digits = \"\".join(str(int(c, 36)) for c in moved)\n    return int(digits) % 97 == 1\n\n\ndef to_decimal(value):\n    try:\n        return Decimal(str(value))\n    except (InvalidOperation, TypeError):\n        return None\n\n\ndef to_date(value):\n    try:\n        return date.fromisoformat(value)\n    except (TypeError, ValueError):\n        return None\n\n\ndef validate(item):\n    inv = item[\"invoice\"]\n    errors, warnings = [], []\n    seller = inv.get(\"seller\") or {}\n    buyer = inv.get(\"buyer\") or {}\n\n    # --- required fields\n    for name in (\"invoice_number\", \"issue_date\", \"currency\", \"net_amount\", \"vat_amount\", \"gross_amount\"):\n        if not inv.get(name):\n            errors.append(f\"missing:{name}\")\n\n    # --- seller / buyer identity\n    if seller.get(\"nip\"):\n        if not nip_valid(seller[\"nip\"]):\n            errors.append(\"seller_nip_checksum\")\n    elif not seller.get(\"vat_id\"):\n        errors.append(\"missing:seller_tax_id\")\n\n    if (buyer.get(\"nip\") or \"\") != item[\"our_nip\"]:\n        errors.append(\"buyer_not_us\")\n\n    # --- amounts: printed totals must add up, never \"fixed\"\n    net, vat, gross = (to_decimal(inv.get(k)) for k in (\"net_amount\", \"vat_amount\", \"gross_amount\"))\n    if None in (net, vat, gross):\n        errors.append(\"amount_not_a_number\")\n    else:\n        if net + vat != gross:\n            errors.append(f\"amounts_mismatch: {net} + {vat} != {gross}\")\n        lines_net = [to_decimal(l.get(\"net_amount\")) for l in inv.get(\"lines\") or []]\n        if lines_net and None not in lines_net and sum(lines_net) != net:\n            warnings.append(f\"lines_sum_mismatch: {sum(lines_net)} != {net}\")\n        if inv.get(\"reverse_charge\") and vat != 0:\n            errors.append(\"reverse_charge_with_vat\")\n\n    # --- dates\n    issue, sale, due = (to_date(inv.get(k)) for k in (\"issue_date\", \"sale_date\", \"due_date\"))\n    if inv.get(\"issue_date\") and issue is None:\n        errors.append(\"issue_date_invalid\")\n    if issue and issue > date.today():\n        errors.append(\"issue_date_in_future\")\n    if issue and due and due < issue:\n        errors.append(\"due_before_issue\")\n    if not due:\n        warnings.append(\"missing:due_date\")\n\n    # --- bank account\n    account = inv.get(\"bank_account\")\n    if not account:\n        warnings.append(\"missing:bank_account\")\n    elif not iban_valid(account):\n        errors.append(\"bank_account_checksum\")\n\n    # --- file fingerprint for duplicate detection\n    sha256 = hashlib.sha256(base64.b64decode(item[\"contentBytes\"])).hexdigest()\n\n    out = {k: v for k, v in item.items() if k != \"contentBytes\"}\n    out.update({\n        \"file_sha256\": sha256,\n        \"seller_tax_id\": seller.get(\"nip\") or seller.get(\"vat_id\"),\n        \"amounts\": {k: (str(v) if v is not None else None) for k, v in ((\"net\", net), (\"vat\", vat), (\"gross\", gross))},\n        \"fx_date_basis\": str(sale or issue) if (sale or issue) else None,\n        \"checks\": {\"errors\": errors, \"warnings\": warnings, \"ok\": not errors},\n    })\n    return out\n\n\nreturn [{\"json\": validate(i[\"json\"])} for i in _items]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        64
+      ],
+      "id": "eb18dc4f-8698-415a-ad81-699e7f51699f",
+      "name": "Validate"
+    },
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$filter",
+              "value": "hasAttachments eq true"
+            },
+            {
+              "name": "$select",
+              "value": "id,subject,from,receivedDateTime"
+            },
+            {
+              "name": "$top",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -400,
+        -224
+      ],
+      "id": "e61fa7af-7241-4750-83f8-1ede9b3c8232",
+      "name": "List messages",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "aeuju9s4PWnhaBpy",
+          "name": "Microsoft Graph invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  EXISTS (SELECT 1 FROM business.invoices WHERE file_sha256 = $1)                              AS same_file,\n  EXISTS (SELECT 1 FROM business.invoices WHERE seller_tax_id = $2 AND invoice_number = $3) AS same_number",
+        "options": {
+          "queryReplacement": "={{ [ $json.file_sha256, $json.seller_tax_id, $json.invoice.invoice_number ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -336,
+        -16
+      ],
+      "id": "6f19ef00-3f97-47f5-902f-e547b0803c3e",
+      "name": "Find duplicates",
+      "credentials": {
+        "postgres": {
+          "id": "UN6YzEvFcyXlazY9",
+          "name": "Postgres invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -128,
+        80
+      ],
+      "id": "e6d02687-6f47-4a3f-912f-747441a79672",
+      "name": "With duplicates"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "93705def-c1e9-4be3-9862-9f5bcddcd29d",
+              "leftValue": "={{ $json.checks.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "f0fb2143-435f-4c85-8601-670fb8d151b6",
+              "leftValue": "={{ $json.invoice.seller.nip }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "49dffb35-fc7b-40dd-983e-b8864dc8601e",
+              "leftValue": "={{ $json.invoice.bank_account }}",
+              "rightValue": "^\\d{26}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        48,
+        80
+      ],
+      "id": "9dd6155d-454a-463a-85f9-51e0bf12da84",
+      "name": "Needs WL check"
+    },
+    {
+      "parameters": {
+        "url": "=  https://wl-api.mf.gov.pl/api/check/nip/{{ $json.invoice.seller.nip }}/bank-account/{{ $json.invoice.bank_account }}?date={{ $now.toFormat('yyyy-MM-dd') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        256,
+        -16
+      ],
+      "id": "ae384bff-0588-4c66-a96b-e626ed9f5b92",
+      "name": "WL check",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        448,
+        80
+      ],
+      "id": "8fdb4a01-889c-4312-b835-ec553bbc8ae5",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0f6b9db-9442-4837-bae9-fb40c1c8407a",
+              "name": "whitelist",
+              "value": "={{ { status: $json.result.accountAssigned, request_id: $json.result.requestId } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        624,
+        144
+      ],
+      "id": "39ffd4e4-479a-442e-8483-d6c3afa3329d",
+      "name": "WL checked"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dfd5cfeb-7947-4367-a5cd-caf87c637203",
+              "name": "whitelist",
+              "value": "={{ { status: 'SKIPPED', request_id: null } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        624,
+        -16
+      ],
+      "id": "80328439-e183-40a0-8d3e-e16041931a37",
+      "name": "WL skipped"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f791ee35-7155-4f4d-8a62-473cf152b449",
+              "leftValue": "={{ $json.invoice.currency }}",
+              "rightValue": "PLN",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        96
+      ],
+      "id": "301f9cef-d865-483a-8934-1ec4451e7dbb",
+      "name": "Foreign currency"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.nbp.pl/api/exchangerates/rates/a/{{ $json.invoice.currency.toLowerCase() }}/{{ DateTime.fromISO($json.fx_date_basis).minus({days: 10}).toISODate() }}/{{ DateTime.fromISO($json.fx_date_basis).minus({days: 1}).toISODate() }}/?format=json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -608,
+        400
+      ],
+      "id": "011d75dd-5a21-4de4-aaa2-7df943df9f3f",
+      "name": "NBP rate",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -416,
+        384
+      ],
+      "id": "b6b5fd53-c3e8-4bb7-ae0e-469e123a98dc",
+      "name": "With rate"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33d513ee-72c2-4cd7-bbc3-84fa9b9af184",
+              "name": "fx",
+              "value": "={{ { rate: $json.rates.at(-1).mid, date: $json.rates.at(-1).effectiveDate, table: $json.rates.at(-1).no } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        496
+      ],
+      "id": "a859c5cc-2763-40f3-aaf4-d3157d45761f",
+      "name": "FX applied"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33d513ee-72c2-4cd7-bbc3-84fa9b9af184",
+              "name": "fx",
+              "value": "={{ { rate: null, date: null, table: null } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        336
+      ],
+      "id": "481cb877-9b73-432b-afa7-4113f210362a",
+      "name": "FX not applied"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e70421c3-8999-4e30-b7b0-4162710637aa",
+              "name": "category",
+              "value": "={{ $json.invoice.category }}",
+              "type": "string"
+            },
+            {
+              "id": "325c127f-0475-45d0-955b-6f4509819e1b",
+              "name": "cost_center",
+              "value": "={{ $('Config').first().json.cost_centers[$json.invoice.category] ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        48,
+        400
+      ],
+      "id": "3e93e84d-0501-4424-b7f4-8711011a5adc",
+      "name": "Categorized"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# n8n Code node \"Decide\" (Python, Run Once for All Items)\n# Routing rules in one place. Input: everything collected so far\n# (checks, same_file/same_number, whitelist, fx, category, cost_center, approval_threshold_pln).\n# Output adds: gross_pln, status, review_reasons.\n#\n# status:\n#   duplicate     - already in the register (same file, or same seller + number) -> not inserted\n#   error         - data is invalid (failed checks) -> stored, nobody can approve it as is\n#   needs_review  - data is valid, but a person must decide (Telegram approval)\n#   approved      - everything fine, booked automatically\n\nfrom decimal import ROUND_HALF_UP, Decimal\n\nCENT = Decimal(\"0.01\")\n\n\ndef decide(item):\n    gross_raw = (item.get(\"amounts\") or {}).get(\"gross\")\n    gross = Decimal(gross_raw) if gross_raw is not None else None\n    rate = (item.get(\"fx\") or {}).get(\"rate\")\n    if gross is None:\n        gross_pln = None                      # unreadable amount -> invoice is an \"error\" anyway\n    elif rate:\n        gross_pln = (gross * Decimal(str(rate))).quantize(CENT, ROUND_HALF_UP)\n    else:\n        gross_pln = gross\n    threshold = Decimal(str(item[\"approval_threshold_pln\"]))\n\n    reasons = []\n    if (item.get(\"whitelist\") or {}).get(\"status\") == \"NIE\":\n        reasons.append(\"bank account is not on the VAT white list\")\n    if item.get(\"category\") in (None, \"\", \"other\") or not item.get(\"cost_center\"):\n        reasons.append(\"category not recognised\")\n    if gross_pln is not None and gross_pln > threshold:\n        reasons.append(f\"gross {gross_pln} PLN is above the approval threshold {threshold} PLN\")\n    reasons += [f\"warning: {w}\" for w in item[\"checks\"][\"warnings\"]]\n\n    if item.get(\"same_file\") or item.get(\"same_number\"):\n        status = \"duplicate\"\n    elif not item[\"checks\"][\"ok\"]:\n        status = \"error\"\n    elif reasons:\n        status = \"needs_review\"\n    else:\n        status = \"approved\"\n\n    return {**item, \"gross_pln\": str(gross_pln) if gross_pln is not None else None, \"status\": status, \"review_reasons\": reasons}\n\n\nreturn [{\"json\": decide(i[\"json\"])} for i in _items]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        400
+      ],
+      "id": "b724c2d0-41d1-420e-ad4f-33dc7c9411c9",
+      "name": "Decide"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5abfa4b9-b1b7-41db-b7fa-fdbc30ce7368",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "duplicate",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        400
+      ],
+      "id": "b15bf412-d587-48de-81c5-64ffa1bbea93",
+      "name": "Not duplicate"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Query of the n8n Postgres node \"Save invoice\" (Execute Query).\n-- Always returns exactly one row: invoice_id, or NULL when a UNIQUE constraint\n-- (same file, or same seller + invoice number) already holds this invoice.\n-- One row per input item keeps the following \"Merge by position\" aligned.\n\nWITH ins AS (\n    INSERT INTO business.invoices (\n        source, source_message_id, file_name, file_sha256,\n        seller_tax_id, seller_name, invoice_number,\n        issue_date, sale_date, due_date, bank_account,\n        currency, net_amount, vat_amount, gross_amount,\n        fx_rate, fx_rate_date, fx_table_no, gross_pln,\n        whitelist_status, whitelist_request_id, validation_errors,\n        category, cost_center, status, approved_by, approved_at,\n        extracted\n    )\n    VALUES (\n        'email', $1, $2, $3,\n        $4, $5, $6,\n        $7::date, $8::date, $9::date, $10,\n        $11, $12::numeric, $13::numeric, $14::numeric,\n        $15::numeric, $16::date, $17, $18::numeric,\n        $19, $20, $21::jsonb,\n        $22, $23, $24::text,\n        CASE WHEN $24::text = 'approved' THEN 'auto' END,\n        CASE WHEN $24::text = 'approved' THEN now() END,\n        $25::jsonb\n    )\n    ON CONFLICT DO NOTHING\n    RETURNING id\n)\nSELECT (SELECT id FROM ins) AS invoice_id;\n",
+        "options": {
+          "queryReplacement": "={{ [   $json.messageId, $json.fileName, $json.file_sha256,   $json.seller_tax_id, $json.invoice.seller.name, $json.invoice.invoice_number,   $json.invoice.issue_date, $json.invoice.sale_date, $json.invoice.due_date, $json.invoice.bank_account,   $json.invoice.currency, $json.amounts.net, $json.amounts.vat, $json.amounts.gross,   $json.fx.rate, $json.fx.date, $json.fx.table, $json.gross_pln,   $json.whitelist.status, $json.whitelist.request_id, JSON.stringify($json.checks.errors),   $json.category, $json.cost_center || null, $json.status,   JSON.stringify($json.invoice) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        608,
+        304
+      ],
+      "id": "6e0f9c72-5360-46a7-a389-458909b1950b",
+      "name": "Save invoice",
+      "retryOnFail": true,
+      "credentials": {
+        "postgres": {
+          "id": "UN6YzEvFcyXlazY9",
+          "name": "Postgres invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "messageId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        960,
+        512
+      ],
+      "id": "41e78add-3ec3-4fed-a9db-161715d54e4c",
+      "name": "One per message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.messageId }}/move",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { destinationId: $('Mail folders').first().json.value.find(f => f.displayName === 'Processed').id } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        512
+      ],
+      "id": "9245aa08-ee1b-4d7e-b33d-389da6c5a48d",
+      "name": "Move to Processed",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "aeuju9s4PWnhaBpy",
+          "name": "Microsoft Graph invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# n8n Code node \"Format message\" (Python, Run Once for All Items)\n# Builds the Telegram notification for each processed invoice.\n# Output adds: kind (approved | review | error | duplicate) and text (Telegram HTML).\n# approved invoices get no message: they show up in the weekly summary instead.\n\n\ndef esc(value):\n    \"\"\"Escape text for Telegram HTML parse mode.\"\"\"\n    return str(value if value is not None else \"\").replace(\"&\", \"&amp;\").replace(\"<\", \"&lt;\").replace(\">\", \"&gt;\")\n\n\ndef money(amount, currency):\n    return f\"{esc(amount)} {esc(currency)}\"\n\n\ndef build(item):\n    inv = item.get(\"invoice\") or {}\n    seller = inv.get(\"seller\") or {}\n    status = item.get(\"status\")\n    invoice_id = item.get(\"invoice_id\")\n\n    # INSERT hit a UNIQUE constraint in the same run -> it is a duplicate after all\n    kind = {\"needs_review\": \"review\", \"error\": \"error\", \"duplicate\": \"duplicate\"}.get(status, \"approved\")\n    if status != \"duplicate\" and invoice_id is None:\n        kind = \"duplicate\"\n\n    head = f\"{esc(seller.get('name'))} ({esc(item.get('seller_tax_id'))})\\n\" \\\n           f\"No. <b>{esc(inv.get('invoice_number'))}</b> · issued {esc(inv.get('issue_date'))} · due {esc(inv.get('due_date'))}\"\n\n    amounts = item.get(\"amounts\") or {}\n    fx = item.get(\"fx\") or {}\n    gross = money(amounts.get(\"gross\"), inv.get(\"currency\"))\n    if fx.get(\"rate\"):\n        gross += f\" = {esc(item.get('gross_pln'))} PLN (NBP {esc(fx.get('table'))}, {esc(fx.get('rate'))})\"\n\n    if kind == \"duplicate\":\n        text = f\"⚪ <b>Duplicate skipped</b>\\n{head}\\nAlready in the register. File: {esc(item.get('fileName'))}\"\n    elif kind == \"error\":\n        errors = \"\\n\".join(f\"• {esc(e)}\" for e in (item.get(\"checks\") or {}).get(\"errors\", []))\n        text = (f\"🔴 <b>Invoice failed checks</b> · #{esc(invoice_id)}\\n{head}\\nGross: {gross}\\n\\n\"\n                f\"{errors}\\n\\nAsk the supplier for a corrected invoice. File: {esc(item.get('fileName'))}\")\n    elif kind == \"review\":\n        wl = item.get(\"whitelist\") or {}\n        reasons = \"\\n\".join(f\"• {esc(r)}\" for r in item.get(\"review_reasons\", []))\n        text = (f\"🟡 <b>Invoice needs approval</b> · #{esc(invoice_id)}\\n{head}\\n\"\n                f\"Gross: <b>{gross}</b>\\n\"\n                f\"Category: {esc(item.get('category'))} → {esc(item.get('cost_center') or '—')}\\n\"\n                f\"VAT white list: {esc(wl.get('status'))}\\n\\n\"\n                f\"Why:\\n{reasons}\")\n    else:\n        text = \"\"\n\n    return {**item, \"kind\": kind, \"text\": text}\n\n\nreturn [{\"json\": build(i[\"json\"])} for i in _items]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        624
+      ],
+      "id": "0d9aa9d5-4f6d-40d7-a82b-92a3ff3eba0e",
+      "name": "Format message"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e23058f4-0933-459c-b531-ae59f21dd0db"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4d37e162-be55-4704-8891-091576d9a9eb",
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "df53bf55-2dc7-45a0-accf-346e57a990ca",
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "duplicate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        624
+      ],
+      "id": "37a08e1e-26dc-4465-a15b-791132e2a6e0",
+      "name": "By kind"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Config').first().json.approver_chat_id }}",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve:{{ $json.invoice_id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject:{{ $json.invoice_id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        672
+      ],
+      "id": "481a89fa-db6f-4e21-b999-8dde77102ffd",
+      "name": "Ask approval",
+      "webhookId": "24931671-3f37-4170-9aa1-b90669670ce5",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        400
+      ],
+      "id": "025a54ea-3278-48ae-8d1d-38a14b9894aa",
+      "name": "Saved"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Config').first().json.approver_chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        864
+      ],
+      "id": "13ba2e97-d416-41c1-949e-921ae7259eb4",
+      "name": "Notify",
+      "webhookId": "24931671-3f37-4170-9aa1-b90669670ce5",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://graph.microsoft.com/v1.0/me/mailFolders",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$filter",
+              "value": "displayName eq 'Processed' or displayName eq 'Failed'"
+            },
+            {
+              "name": "$select",
+              "value": "id,displayName"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -576,
+        -224
+      ],
+      "id": "28230d61-a188-405c-968b-a0542d8c10e0",
+      "name": "Mail folders",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "aeuju9s4PWnhaBpy",
+          "name": "Microsoft Graph invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "87c5d058-b889-425d-a86c-7459873b7ad7",
+              "leftValue": "={{ ($json.text ?? '').trim().length }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        -352
+      ],
+      "id": "f1690283-83ce-4c04-820b-68ae12bb34ab",
+      "name": "Has text"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6af6f5be-8a95-4505-8877-13c208e718f3",
+              "name": "messageId",
+              "value": "={{ $('Attachment').item.json.messageId }}",
+              "type": "string"
+            },
+            {
+              "id": "cf599883-c298-4ae9-bed3-9b438aefe8fa",
+              "name": "fileName",
+              "value": "={{ $('Attachment').item.json.fileName }}",
+              "type": "string"
+            },
+            {
+              "id": "c37e583b-d920-4897-8eb2-7069bb726b24",
+              "name": "from",
+              "value": "={{ $('Attachment').item.json.from }}",
+              "type": "string"
+            },
+            {
+              "id": "e0156c8f-0cdc-469b-9261-28f2817cd1dc",
+              "name": "reason",
+              "value": "={{ $json.error?.message ?? 'no text layer (scanned image?)' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1312,
+        176
+      ],
+      "id": "c242c841-11d2-4d4f-9bd1-c0b922ff551b",
+      "name": "Unreadable"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Config').first().json.approver_chat_id }}",
+        "text": "=  ⚠️ Could not read invoice\n  File: {{ $json.fileName }}\n  From: {{ $json.from }}\n  Reason: {{ $json.reason.slice(0, 300) }}\n  The email was moved to \"Failed\" — please process it manually.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1504,
+        48
+      ],
+      "id": "96ef08df-8999-4f8f-898c-14d56286bf72",
+      "name": "Notify unreadable",
+      "webhookId": "42cd6a8a-31b6-4fc0-bb2e-27f7f924c937",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "messageId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        176
+      ],
+      "id": "4dc98ba6-fe45-43d6-aedf-0003e508cf84",
+      "name": "One per message1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ $json.messageId }}/move",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { destinationId: $('Mail folders').first().json.value.find(f => f.displayName === 'Failed').id } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1840,
+        176
+      ],
+      "id": "7ebe80db-733e-489a-ad90-68a805d68d07",
+      "name": "Move to Failed",
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "aeuju9s4PWnhaBpy",
+          "name": "Microsoft Graph invoices"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split messages": {
+      "main": [
+        [
+          {
+            "node": "Get attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get attachments": {
+      "main": [
+        [
+          {
+            "node": "Split attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split attachments": {
+      "main": [
+        [
+          {
+            "node": "Only PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only PDF": {
+      "main": [
+        [
+          {
+            "node": "Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attachment": {
+      "main": [
+        [
+          {
+            "node": "To PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To PDF": {
+      "main": [
+        [
+          {
+            "node": "PDF to text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF to text": {
+      "main": [
+        [
+          {
+            "node": "Has text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unreadable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract invoice",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Extract invoice",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract invoice": {
+      "main": [
+        [
+          {
+            "node": "Invoice data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unreadable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice data": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Mail folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List messages": {
+      "main": [
+        [
+          {
+            "node": "Split messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Find duplicates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "With duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find duplicates": {
+      "main": [
+        [
+          {
+            "node": "With duplicates",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "With duplicates": {
+      "main": [
+        [
+          {
+            "node": "Needs WL check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs WL check": {
+      "main": [
+        [
+          {
+            "node": "WL check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WL skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WL check": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "WL checked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WL checked": {
+      "main": [
+        [
+          {
+            "node": "Foreign currency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WL skipped": {
+      "main": [
+        [
+          {
+            "node": "Foreign currency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Foreign currency": {
+      "main": [
+        [
+          {
+            "node": "NBP rate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "With rate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FX not applied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NBP rate": {
+      "main": [
+        [
+          {
+            "node": "With rate",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "With rate": {
+      "main": [
+        [
+          {
+            "node": "FX applied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FX applied": {
+      "main": [
+        [
+          {
+            "node": "Categorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FX not applied": {
+      "main": [
+        [
+          {
+            "node": "Categorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorized": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "Not duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Not duplicate": {
+      "main": [
+        [
+          {
+            "node": "Save invoice",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Saved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "One per message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save invoice": {
+      "main": [
+        [
+          {
+            "node": "Saved",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "One per message": {
+      "main": [
+        [
+          {
+            "node": "Move to Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Processed": {
+      "main": [
+        []
+      ]
+    },
+    "By kind": {
+      "main": [
+        [
+          {
+            "node": "Ask approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format message": {
+      "main": [
+        [
+          {
+            "node": "By kind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Saved": {
+      "main": [
+        [
+          {
+            "node": "One per message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mail folders": {
+      "main": [
+        [
+          {
+            "node": "List messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has text": {
+      "main": [
+        [
+          {
+            "node": "Extract invoice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unreadable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unreadable": {
+      "main": [
+        [
+          {
+            "node": "Notify unreadable",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "One per message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify unreadable": {
+      "main": [
+        []
+      ]
+    },
+    "One per message1": {
+      "main": [
+        [
+          {
+            "node": "Move to Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4PASS4m6Neq5To5u",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a0ad702a-c1f7-4b1f-b907-c63c47d50045",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "qQpvf2TKFAwPcRER",
+  "tags": []
+}

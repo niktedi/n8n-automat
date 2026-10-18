@@ -1,0 +1,17 @@
+name: Deploy 02 · Invoice processing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "02-invoice-processing/**"
+      - ".github/workflows/deploy-02-invoice-processing.yml"
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-scenario.yml
+    with:
+      scenario: 02-invoice-processing
+    secrets: inherit
+    

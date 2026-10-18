@@ -1,0 +1,308 @@
+{
+  "name": "02 Invoice approval",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -800,
+        -144
+      ],
+      "id": "b59a83da-2e8c-4219-838c-6237cffd3a60",
+      "name": "Telegram Trigger",
+      "webhookId": "85f607bf-0993-407b-8ebe-83ee3fb4d039",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1541ce36-23b2-43b5-ad8c-cfbf72a941c6",
+              "name": "approver_chat_id",
+              "value": "246475971",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -640,
+        -144
+      ],
+      "id": "4ab96bbc-d167-48b6-a38a-3bf764d4b06e",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bb7c2479-5eb5-4e0b-b80b-b40435d45f25",
+              "leftValue": "={{ String($('Telegram Trigger').first().json.callback_query.from.id) }}",
+              "rightValue": "={{ $json.approver_chat_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        -144
+      ],
+      "id": "43a91bf3-536a-4771-b5cd-88316e87e781",
+      "name": "Is approver?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5ec1ac19-3979-4c2e-9d9e-ad16ff3ba605",
+              "name": "action",
+              "value": "={{ $('Telegram Trigger').first().json.callback_query.data.split(':')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "d6682076-c1b5-43d2-b21f-d17fc01954ee",
+              "name": "invoice_id",
+              "value": "={{ Number($('Telegram Trigger').first().json.callback_query.data.split(':')[1]) }}",
+              "type": "string"
+            },
+            {
+              "id": "c3597771-4ee7-4414-8959-06c5f0985d53",
+              "name": "decided_by",
+              "value": "={{ 'telegram:' + ($('Telegram Trigger').first().json.callback_query.from.username ?? $('Telegram Trigger').first().json.callback_query.from.id) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -304,
+        -224
+      ],
+      "id": "440ebf5c-c267-41bd-9c97-17a740bc5efe",
+      "name": "Parse"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Query of the n8n Postgres node \"Apply decision\" in workflow \"02 Invoice approval\".\n-- $1 invoice id, $2 action ('approve' | 'reject'), $3 who decided.\n-- Changes only invoices that still wait for a decision: a second click, an old\n-- message or a forged callback for an invoice in any other status changes nothing.\n-- Always returns exactly one row: new_status, or NULL when nothing was changed.\n\nWITH upd AS (\n    UPDATE business.invoices\n    SET status      = CASE WHEN $2::text = 'approve' THEN 'approved' ELSE 'rejected' END,\n        approved_by = $3::text,\n        approved_at = now(),\n        updated_at  = now()\n    WHERE id = $1::bigint\n      AND status = 'needs_review'\n      AND $2::text IN ('approve', 'reject')\n    RETURNING status\n)\nSELECT (SELECT status FROM upd) AS new_status;\n",
+        "options": {
+          "queryReplacement": "={{ [ $json.invoice_id, $json.action, $json.decided_by ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -144,
+        -224
+      ],
+      "id": "69110fce-aa14-46e5-8be6-6f6d272cf110",
+      "name": "Apply decision",
+      "credentials": {
+        "postgres": {
+          "id": "UN6YzEvFcyXlazY9",
+          "name": "Postgres invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram Trigger').first().json.callback_query.id }}",
+        "additionalFields": {
+          "text": "={{ $json.new_status ? 'Invoice ' + $json.new_status : 'Already decided' }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        -224
+      ],
+      "id": "230cff2d-7fd0-4abc-980b-50f26a8d743c",
+      "name": "Answer Query a callback",
+      "webhookId": "65f503f4-036d-4e71-8ada-3513a2b601be",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Telegram Trigger').first().json.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Telegram Trigger').first().json.callback_query.message.message_id }}",
+        "text": "={{ $('Telegram Trigger').first().json.callback_query.message.text + '\\n\\n' + ($json.new_status === 'approved' ? '✅ Approved' : $json.new_status === 'rejected' ? '❌ Rejected' : 'ℹ️ Already decided') + ' by ' + $('Parse').first().json.decided_by }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        -224
+      ],
+      "id": "49033310-86ce-4073-9e50-c3af03df1467",
+      "name": "Edit a text message",
+      "webhookId": "6af7050c-21ea-44b5-8fa1-eff547e59b61",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram Trigger').first().json.callback_query.id }}",
+        "additionalFields": {
+          "text": "=Not Allowed"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "60255864-e98f-4b1d-bf45-046c7757dbc9",
+      "name": "Not allowed",
+      "webhookId": "65f503f4-036d-4e71-8ada-3513a2b601be",
+      "credentials": {
+        "telegramApi": {
+          "id": "hoIaMiGpFaduNH4a",
+          "name": "Telegram invoices"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Is approver?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is approver?": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Apply decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply decision": {
+      "main": [
+        [
+          {
+            "node": "Answer Query a callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback": {
+      "main": [
+        [
+          {
+            "node": "Edit a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4PASS4m6Neq5To5u",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7c02429f-f866-46a6-91f2-38f8b3af502d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "AJLGHDqIfRSbyI1n",
+  "tags": []
+}
