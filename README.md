@@ -14,8 +14,8 @@ Each scenario solves one concrete process and is built the way it would run in p
 | # | Scenario | Status |
 |---|---|---|
 | 00 | [Telegram smoke bot](00-telegram-smoke-bot/README.md): checks the whole CI/CD pipeline | Done |
-| 01 | [IT support AI agent](01-it-support-ai-agent/README.md): Telegram bot that diagnoses the server, follows a knowledge base and opens GitHub issues [demo video](https://vimeo.com/1236476626) | Done
-| 02 | — | In progress |
+| 01 | [IT support AI agent](01-it-support-ai-agent/README.md): Telegram bot that diagnoses the server, follows a knowledge base and opens GitHub issues | Done · [demo video](https://vimeo.com/1236476626) |
+| 02 | [Invoice processing](02-invoice-processing/README.md): PDF invoices from a mailbox are read by an LLM, checked in code (NIP, totals, VAT white list, NBP rates), approved in Telegram and kept in a Postgres register | Done · demo video soon |
 | 03 | — | In progress |
 | 04 | — | In progress |
 
@@ -37,7 +37,8 @@ dev n8n  ──export──▶  Git  ──push──▶  Checks  ──▶  Dep
 ```text
 00-telegram-smoke-bot/      scenario: pipeline check
 01-it-support-ai-agent/     scenario: IT support AI agent
-infra/                      shared server pieces: Postgres setup, SSH wrapper
+02-invoice-processing/      scenario: invoice processing (+ shared error-alerts workflow)
+infra/                      shared server pieces: Postgres setup and migrations, SSH wrapper
 scripts/                    workflow checks and deploy rendering (Python)
 .github/workflows/          checks, reusable deploy template, one deploy per scenario
 .githooks/                  pre-commit: workflow checks + gitleaks
@@ -45,4 +46,4 @@ scripts/                    workflow checks and deploy rendering (Python)
 
 ## Stack
 
-n8n (self-hosted, Docker Compose), PostgreSQL, LLMs via OpenRouter, Python, GitHub Actions with a self-hosted runner, gitleaks, Telegram Bot API, GitHub API.
+n8n (self-hosted, Docker Compose), PostgreSQL, LLMs via OpenRouter, Python, GitHub Actions with a self-hosted runner, gitleaks, Telegram Bot API, GitHub API, Microsoft Graph (Outlook), Polish VAT white list API, NBP exchange rate API.

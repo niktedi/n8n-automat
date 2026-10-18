@@ -27,7 +27,7 @@ Mailbox (Microsoft Graph)
   → e-mail moved to Processed or Failed
 ```
 
-A second workflow, `approval.workflow.json`, handles the Approve / Reject buttons.
+A second workflow, `invoice-approval.workflow.json`, handles the Approve / Reject buttons.
 
 **Core principle: the LLM only reads; code decides.** The model copies what is printed on the invoice into JSON. It never calculates, corrects or completes anything. If the printed gross amount is wrong, the model returns it as printed and the Python checks catch the error — a supplier's mistake cannot disappear because a model was being helpful.
 
@@ -126,7 +126,7 @@ External calls are retried (2–3 attempts with a pause). If a service stays dow
 - the e-mail is moved out of the Inbox **at the very end**, so after a failure it stays where it was and the next run processes it again;
 - writing it again cannot create a duplicate — the SHA-256 lookup and the `UNIQUE` constraints prevent that.
 
-At-least-once delivery plus idempotent writes gives effectively-once processing with no manual clean-up. The shared error workflow (`infra/error-alerts.workflow.json`) reports the failure to Telegram: which workflow, which node, the error message and a link to the execution.
+At-least-once delivery plus idempotent writes gives effectively-once processing with no manual clean-up. The shared error workflow (`error-alerts.workflow.json`) reports the failure to Telegram: which workflow, which node, the error message and a link to the execution.
 
 ## Why keep an invoice register
 
@@ -182,13 +182,13 @@ What normally comes next, and is out of scope here:
 
 ## Setup
 
-1. **Database:** run `sql/02_001_init.sql` (with `\set app_role invoice_agent`) and then `sql/02_002_seller_tax_id.sql` as the database owner.
+1. **Database:** run `infra/postgres/02_001_initdb.sql` (with `\set app_role invoice_agent`) and then `infra/postgres/02_002_seller_tax_id.sql` as the database owner.
 2. **Task runner:** allow the modules used by the Code nodes:
-   `N8N_RUNNERS_STDLIB_ALLOW: "re,datetime,decimal,json,hashlib,base64"` on the runners container, and pass the variable through in `n8n-task-runners.json` (see `infra/`).
+   `N8N_RUNNERS_STDLIB_ALLOW: "re,datetime,decimal,json,hashlib,base64"` on the runners container, and mount a copy of the runner's `/etc/n8n-task-runners.json` that lists it in `allowed-env` — the stock file forces it to an empty value.
 3. **Credentials** in n8n, with exactly these names: `Microsoft Graph invoices` (Microsoft OAuth2, scope `offline_access User.Read Mail.ReadWrite Files.ReadWrite`), `Postgres invoices`, `Telegram invoices`, and the OpenRouter credential.
 4. **Mailbox:** create the `Processed` and `Failed` folders.
 5. **Telegram:** press `/start` in the bot, so it is allowed to write to you.
-6. **Error workflow:** deploy and publish `infra/error-alerts.workflow.json` first — both workflows point to it by ID.
+6. **Error workflow:** `error-alerts.workflow.json` must be imported and published before the other two — both point to it by ID (the deploy imports `*.workflow.json` files in alphabetical order, so it goes first).
 
 ## Demo data
 
@@ -198,9 +198,12 @@ What normally comes next, and is out of scope here:
 
 ```text
 02-invoice-processing/
-├── workflow.json            main workflow
-├── approval.workflow.json   Approve / Reject buttons
-├── code/                    Python from the Code nodes (validate, decide, format_message)
-├── sql/                     migrations 02_001, 02_002 and the queries
-└── demo/                    invoice generator and test files
+├── workflow.json                    main workflow
+├── invoice-approval.workflow.json   Approve / Reject buttons
+├── error-alerts.workflow.json       shared error workflow (Telegram alerts)
+├── code/                            Python from the Code nodes (validate, decide, format_message)
+├── sql/queries/                     SQL of the Postgres nodes (insert, approval decision)
+└── demo/                            invoice generator and test files
+
+infra/postgres/02_001_initdb.sql, 02_002_seller_tax_id.sql   database migrations
 ```
