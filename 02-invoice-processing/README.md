@@ -4,7 +4,9 @@ An n8n workflow that picks up incoming invoices from a mailbox, reads the PDF wi
 
 Built in n8n, deployed from Git to a self-hosted n8n by CI.
 
-> **Demo:** _video coming soon_
+> **Demo:** 
+
+[Demo Video](https://vimeo.com/1237086810)
 
 **The problem.** Accounts payable re-types data from PDFs, checks the arithmetic, verifies the supplier's bank account against the VAT white list, looks up the NBP exchange rate for foreign-currency invoices, and makes sure the same invoice is not booked twice. It is repetitive work where mistakes are easy and expensive.
 
