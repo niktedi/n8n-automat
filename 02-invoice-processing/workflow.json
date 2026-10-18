@@ -1116,9 +1116,10 @@
     {
       "parameters": {
         "chatId": "={{ $('Config').first().json.approver_chat_id }}",
-        "text": "=  ⚠️ Could not read invoice\n  File: {{ $json.fileName }}\n  From: {{ $json.from }}\n  Reason: {{ $json.reason.slice(0, 300) }}\n  The email was moved to \"Failed\" — please process it manually.",
+        "text": "=⚠️ <b>Could not read invoice</b>\nFile: {{ $json.fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }}\nFrom: {{ $json.from.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }}\nReason: {{ $json.reason.slice(0, 300).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }}\nThe email was moved to \"Failed\" — please process it manually.",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -1799,7 +1800,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "d8a020ce-b275-4e3d-9bbd-dc384729c982",
+  "versionId": "08402f67-365a-414a-971f-ad4d902c3996",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
