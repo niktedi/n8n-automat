@@ -1117,7 +1117,9 @@
       "parameters": {
         "chatId": "={{ $('Config').first().json.approver_chat_id }}",
         "text": "=  ⚠️ Could not read invoice\n  File: {{ $json.fileName }}\n  From: {{ $json.from }}\n  Reason: {{ $json.reason.slice(0, 300) }}\n  The email was moved to \"Failed\" — please process it manually.",
-        "additionalFields": {}
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1797,7 +1799,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "62216dae-4e83-4f19-b9a7-c0bfee9764be",
+  "versionId": "d8a020ce-b275-4e3d-9bbd-dc384729c982",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
