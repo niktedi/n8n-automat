@@ -77,4 +77,91 @@ WINDOW w30 AS (
   RANGE BETWEEN 29 PRECEDING AND CURRENT ROW
 );
 
--- Exposure views are added in step 2.4b.
+-- Every position with its sign and booking rate (NBP mid of the last publication BEFORE booked_date).
+-- Base for the two exposure views below, so the booking-rate rule lives in one place.
+CREATE OR REPLACE VIEW __BQ_DATASET__.positions_booked
+OPTIONS (description = 'Positions with sign (+1 receivable, -1 payable) and booking rate')
+AS
+WITH r AS (
+  SELECT rate_date, currency, mid, table_no
+  FROM __BQ_DATASET__.rates
+  WHERE rate_date >= DATE_SUB(CURRENT_DATE('Europe/Warsaw'), INTERVAL 3 YEAR)  -- partition filter
+)
+SELECT
+  p.*,
+  IF(p.direction = 'receivable', 1, -1) AS sign,
+  r.rate_date AS booked_rate_date,
+  r.table_no  AS booked_table_no,
+  r.mid       AS booked_rate
+FROM __BQ_DATASET__.positions AS p
+JOIN r
+  ON  r.currency  = p.currency
+  AND r.rate_date <  p.booked_date
+  AND r.rate_date >= DATE_SUB(p.booked_date, INTERVAL 10 DAY)
+WHERE TRUE
+QUALIFY ROW_NUMBER() OVER (PARTITION BY p.position_id ORDER BY r.rate_date DESC) = 1;
+
+-- Open positions today, valued at the latest NBP rate, with unrealised FX result and due bucket.
+CREATE OR REPLACE VIEW __BQ_DATASET__.exposure_positions
+OPTIONS (description = 'Open positions valued at the latest NBP rate: PLN value, unrealised FX gain/loss, due bucket')
+AS
+WITH latest AS (
+  SELECT currency, rate_date, mid
+  FROM __BQ_DATASET__.rates
+  WHERE rate_date >= DATE_SUB(CURRENT_DATE('Europe/Warsaw'), INTERVAL 30 DAY)  -- partition filter
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY currency ORDER BY rate_date DESC) = 1
+),
+today AS (SELECT CURRENT_DATE('Europe/Warsaw') AS d)
+SELECT
+  b.position_id,
+  b.direction,
+  b.counterparty,
+  b.currency,
+  b.amount,
+  b.sign * b.amount                                    AS signed_amount,
+  b.booked_date,
+  b.booked_rate_date,
+  b.booked_rate,
+  ROUND(b.sign * b.amount * b.booked_rate, 2)          AS booked_pln,
+  l.rate_date                                          AS current_rate_date,
+  l.mid                                                AS current_rate,
+  ROUND(b.sign * b.amount * l.mid, 2)                  AS current_pln,
+  ROUND(b.sign * b.amount * (l.mid - b.booked_rate), 2) AS unrealised_pln,
+  b.due_date,
+  DATE_DIFF(b.due_date, today.d, DAY)                  AS days_to_due,
+  CASE
+    WHEN b.due_date <  today.d                    THEN '0 overdue'
+    WHEN DATE_DIFF(b.due_date, today.d, DAY) <= 30 THEN '1 within 30 days'
+    WHEN DATE_DIFF(b.due_date, today.d, DAY) <= 60 THEN '2 31-60 days'
+    WHEN DATE_DIFF(b.due_date, today.d, DAY) <= 90 THEN '3 61-90 days'
+    ELSE '4 over 90 days'
+  END                                                  AS due_bucket
+FROM __BQ_DATASET__.positions_booked AS b
+CROSS JOIN today
+JOIN latest AS l USING (currency)
+WHERE b.booked_date <= today.d
+  AND (b.settled_date IS NULL OR b.settled_date > today.d);
+
+-- Net position and unrealised FX result per currency for every NBP publication day.
+-- A position counts on day d if booked on or before d and not yet settled on d.
+CREATE OR REPLACE VIEW __BQ_DATASET__.exposure_daily
+OPTIONS (description = 'Daily net open position per currency: amount, PLN value and unrealised FX gain/loss')
+AS
+WITH r AS (
+  SELECT rate_date, currency, mid
+  FROM __BQ_DATASET__.rates
+  WHERE rate_date >= DATE_SUB(CURRENT_DATE('Europe/Warsaw'), INTERVAL 3 YEAR)  -- partition filter
+)
+SELECT
+  r.rate_date,
+  r.currency,
+  COUNT(*)                                               AS open_docs,
+  SUM(b.sign * b.amount)                                 AS net_amount,
+  ROUND(SUM(b.sign * b.amount * r.mid), 2)               AS net_pln,
+  ROUND(SUM(b.sign * b.amount * (r.mid - b.booked_rate)), 2) AS unrealised_pln
+FROM __BQ_DATASET__.positions_booked AS b
+JOIN r
+  ON  r.currency  = b.currency
+  AND r.rate_date >= b.booked_date
+  AND (b.settled_date IS NULL OR r.rate_date < b.settled_date)
+GROUP BY r.rate_date, r.currency;
