@@ -33,4 +33,47 @@ CREATE TABLE IF NOT EXISTS positions (
 )
 OPTIONS (description = 'Demo FX payables and receivables (seeded). In production this would be fed from ERP / AP and AR modules.');
 
--- Views (rate_metrics, exposure) are added in step 2.4.
+-- Rate metrics per currency and NBP publication day.
+-- Changes are in %, volatility is annualised (daily returns over 30 calendar days × √252).
+CREATE OR REPLACE VIEW rate_metrics
+OPTIONS (description = 'Daily, weekly change, 30-day min/max and volatility per currency, computed from rates')
+AS
+WITH r AS (
+  SELECT rate_date, currency, mid, table_no
+  FROM rates
+  WHERE rate_date >= DATE_SUB(CURRENT_DATE('Europe/Warsaw'), INTERVAL 3 YEAR)  -- partition filter
+),
+with_prev AS (
+  SELECT
+    r.*,
+    LAG(mid) OVER (PARTITION BY currency ORDER BY rate_date) AS prev_mid,
+    LAST_VALUE(mid) OVER (
+      PARTITION BY currency ORDER BY UNIX_DATE(rate_date)
+      RANGE BETWEEN UNBOUNDED PRECEDING AND 7 PRECEDING
+    ) AS week_ago_mid
+  FROM r
+),
+with_ret AS (
+  SELECT
+    with_prev.*,
+    CAST(SAFE_DIVIDE(mid - prev_mid, prev_mid) AS FLOAT64) AS ret_1d
+  FROM with_prev
+)
+SELECT
+  rate_date,
+  currency,
+  mid,
+  table_no,
+  ROUND(ret_1d * 100, 3)                                         AS chg_1d_pct,
+  ROUND(SAFE_DIVIDE(mid - week_ago_mid, week_ago_mid) * 100, 3)  AS chg_1w_pct,
+  MIN(mid) OVER w30                                              AS min_30d,
+  MAX(mid) OVER w30                                              AS max_30d,
+  ROUND(STDDEV_SAMP(ret_1d) OVER w30 * SQRT(252) * 100, 2)       AS vol_30d_ann_pct,
+  COUNT(*) OVER w30                                              AS sessions_30d
+FROM with_ret
+WINDOW w30 AS (
+  PARTITION BY currency ORDER BY UNIX_DATE(rate_date)
+  RANGE BETWEEN 29 PRECEDING AND CURRENT ROW
+);
+
+-- Exposure views are added in step 2.4b.
