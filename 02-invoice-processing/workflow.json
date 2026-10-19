@@ -260,7 +260,7 @@
             {
               "id": "af9cafd8-9996-42c3-981b-af868ebe69ad",
               "name": "approver_chat_id",
-              "value": "__APPROVER_CHAT_ID__",
+              "value": "__ALLOWED_CHAT_ID__",
               "type": "string"
             }
           ]
