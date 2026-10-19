@@ -202,7 +202,9 @@
     {
       "parameters": {
         "model": "google/gemma-4-31b-it",
-        "options": {}
+        "options": {
+          "temperature": 0
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
@@ -258,7 +260,7 @@
             {
               "id": "af9cafd8-9996-42c3-981b-af868ebe69ad",
               "name": "approver_chat_id",
-              "value": "__ALLOWED_CHAT_ID__",
+              "value": "__APPROVER_CHAT_ID__",
               "type": "string"
             }
           ]
@@ -1800,7 +1802,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "08402f67-365a-414a-971f-ad4d902c3996",
+  "versionId": "e76425ce-7b05-4e0d-8df1-321b9651968f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
