@@ -1,10 +1,11 @@
 -- Scenario 03 · FX treasury reporting — BigQuery schema.
--- Table names are unqualified: the target dataset is chosen when applying, e.g.
---   bq query --location=EU --use_legacy_sql=false --dataset_id=n8n-automat-fx:fx_dev < schema.sql
+-- __BQ_DATASET__ is replaced with the target dataset when applying (views must use
+-- dataset-qualified names, so a default dataset is not enough), e.g.
+--   sed 's/__BQ_DATASET__/fx_dev/g' schema.sql | bq query --location=EU --use_legacy_sql=false
 -- Every statement is idempotent (IF NOT EXISTS / OR REPLACE), so the file can be re-applied.
 
 -- Daily NBP table A mid rates.
-CREATE TABLE IF NOT EXISTS rates (
+CREATE TABLE IF NOT EXISTS __BQ_DATASET__.rates (
   rate_date  DATE      NOT NULL OPTIONS (description = 'NBP effectiveDate (table A)'),
   currency   STRING    NOT NULL OPTIONS (description = 'ISO 4217 code, e.g. EUR'),
   mid        NUMERIC   NOT NULL OPTIONS (description = 'NBP mid rate, PLN per 1 unit'),
@@ -20,7 +21,7 @@ OPTIONS (
 );
 
 -- Demo FX payables and receivables (loaded from seed.sql).
-CREATE TABLE IF NOT EXISTS positions (
+CREATE TABLE IF NOT EXISTS __BQ_DATASET__.positions (
   position_id   STRING  NOT NULL OPTIONS (description = 'Document id, e.g. AP-0007 or AR-0003'),
   direction     STRING  NOT NULL OPTIONS (description = 'payable (we pay) or receivable (we get paid)'),
   counterparty  STRING  NOT NULL OPTIONS (description = 'Supplier or customer name'),
@@ -35,12 +36,12 @@ OPTIONS (description = 'Demo FX payables and receivables (seeded). In production
 
 -- Rate metrics per currency and NBP publication day.
 -- Changes are in %, volatility is annualised (daily returns over 30 calendar days × √252).
-CREATE OR REPLACE VIEW rate_metrics
+CREATE OR REPLACE VIEW __BQ_DATASET__.rate_metrics
 OPTIONS (description = 'Daily, weekly change, 30-day min/max and volatility per currency, computed from rates')
 AS
 WITH r AS (
   SELECT rate_date, currency, mid, table_no
-  FROM rates
+  FROM __BQ_DATASET__.rates
   WHERE rate_date >= DATE_SUB(CURRENT_DATE('Europe/Warsaw'), INTERVAL 3 YEAR)  -- partition filter
 ),
 with_prev AS (
