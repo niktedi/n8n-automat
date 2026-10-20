@@ -1,0 +1,193 @@
+{
+  "name": "03 FX backfill",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        -80
+      ],
+      "id": "bc68cc5e-a010-42fc-8723-49afe229943f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a9bc2c41-f16d-4006-bf75-bef709f28e0e",
+              "name": "start_date",
+              "value": "={{ $now.minus({ years: 3 }).toISODate() }}",
+              "type": "string"
+            },
+            {
+              "id": "accb0688-661d-4d68-a7b9-752130666204",
+              "name": "end_date",
+              "value": "={{ $now.toISODate()}}",
+              "type": "string"
+            },
+            {
+              "id": "75252dfa-b622-4022-bba7-cac95915ffc9",
+              "name": "window_days",
+              "value": "93",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -224,
+        -80
+      ],
+      "id": "9da57f87-caf3-464e-93c9-8d7e86c60822",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "from datetime import date, timedelta\n\ncfg = _items[0][\"json\"]\nstart = date.fromisoformat(cfg[\"start_date\"])\nend = date.fromisoformat(cfg[\"end_date\"])\nspan = int(cfg[\"window_days\"])\n\nif start > end:\n    raise ValueError(f\"start_date {start} is after end_date {end}\")\n\nwindows = []\ns = start\nwhile s <= end:\n    e = min(s + timedelta(days=span - 1), end)  # inclusive window of at most `span` days\n    windows.append({\"json\": {\"start_date\": s.isoformat(), \"end_date\": e.isoformat()}})\n    s = e + timedelta(days=1)\n\nreturn windows"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "f48c6486-133f-4d2f-bd38-fe4389f3cd53",
+      "name": "Windows"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "dt743Ev0euajvAkT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dt743Ev0euajvAkT",
+          "cachedResultName": "03 FX load window"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "start_date": "={{ $json.start_date }}",
+            "end_date": "={{ $json.end_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        32,
+        -80
+      ],
+      "id": "5fce153f-fde5-4cf6-99aa-ebeff668887d",
+      "name": "Load window"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "items = [i[\"json\"] for i in _items]\n\nreturn [{\"json\": {\n    \"windows\": len(items),\n    \"tables\": sum(int(i[\"tables\"]) for i in items),\n    \"rows_sent\": sum(int(i[\"rows_sent\"]) for i in items),\n    \"first_date\": items[0][\"start_date\"],\n    \"last_date\": items[-1][\"end_date\"],\n}}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -80
+      ],
+      "id": "4a767a48-ad2d-4d29-86dd-1ea3dbcf92c6",
+      "name": "Summary"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Windows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Windows": {
+      "main": [
+        [
+          {
+            "node": "Load window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load window": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c26e07b3-cea3-4012-9d77-3d398fb6948b",
+  "meta": {
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "PGPakIiwxaZYxKQv",
+  "tags": []
+}

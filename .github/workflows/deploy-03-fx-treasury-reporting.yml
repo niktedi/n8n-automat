@@ -1,0 +1,16 @@
+name: Deploy 03 · FX treasury reporting
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "03-fx-treasury-reporting/**"
+      - ".github/workflows/deploy-03-fx-treasury-reporting.yml"
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-scenario.yml
+    with:
+      scenario: 03-fx-treasury-reporting
+    secrets: inherit

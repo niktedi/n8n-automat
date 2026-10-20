@@ -1,0 +1,347 @@
+{
+  "name": "03 FX weekly report",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dbfabc50-3e96-438b-b6aa-943217ac5494",
+              "name": "project",
+              "value": "n8n-automat-fx",
+              "type": "string"
+            },
+            {
+              "id": "98869446-1f3a-498c-9c7e-067a59efd799",
+              "name": "dataset",
+              "value": "__BQ_DATASET__",
+              "type": "string"
+            },
+            {
+              "id": "94bccbaf-699b-42cb-95e6-5053b4ce3a2a",
+              "name": "chat_id",
+              "value": "__ALLOWED_CHAT_ID__",
+              "type": "string"
+            },
+            {
+              "id": "284d5128-fda9-4958-b6b8-d4f0b0a9b101",
+              "name": "model",
+              "value": "gemini-3.8-flash",
+              "type": "string"
+            },
+            {
+              "id": "4baffbd7-aefd-4255-9a1a-be143b74368f",
+              "name": "vertex_location",
+              "value": "global",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -320,
+        -192
+      ],
+      "id": "cb1769ec-0941-4dcc-ac32-18c4a349ef42",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": {
+          "__rl": true,
+          "value": "n8n-automat-fx",
+          "mode": "list",
+          "cachedResultName": "n8n-automat",
+          "cachedResultUrl": "https://console.cloud.google.com/bigquery?project=n8n-automat-fx"
+        },
+        "sqlQuery": "WITH latest AS (\n  SELECT MAX(rate_date) AS d\n  FROM `{{ $json.project }}.{{ $json.dataset }}.rate_metrics`\n),\nm AS (\n  SELECT r.currency, r.rate_date, r.mid, r.chg_1w_pct, r.min_30d, r.max_30d, r.vol_30d_ann_pct\n  FROM `{{ $json.project }}.{{ $json.dataset }}.rate_metrics` AS r, latest\n  WHERE r.rate_date = latest.d\n),\nvol_1y AS (\n  SELECT currency, ROUND(AVG(vol_30d_ann_pct), 2) AS vol_1y_avg_pct\n  FROM `{{ $json.project }}.{{ $json.dataset }}.rate_metrics`, latest\n  WHERE rate_date > DATE_SUB(latest.d, INTERVAL 1 YEAR)\n  GROUP BY currency\n),\npos AS (\n  SELECT\n    currency,\n    COUNT(*)                                                  AS open_docs,\n    SUM(signed_amount)                                        AS net_amount,\n    SUM(current_pln)                                          AS net_pln,\n    SUM(unrealised_pln)                                       AS unrealised_pln,\n    SUM(IF(days_to_due < 0, signed_amount, 0))                AS overdue_amount,\n    SUM(IF(days_to_due BETWEEN 0 AND 30, signed_amount, 0))   AS due_30d_amount\n  FROM `{{ $json.project }}.{{ $json.dataset }}.exposure_positions`\n  GROUP BY currency\n),\nweek_ago AS (\n  SELECT currency, unrealised_pln AS unrealised_week_ago\n  FROM `{{ $json.project }}.{{ $json.dataset }}.exposure_daily`, latest\n  WHERE rate_date <= DATE_SUB(latest.d, INTERVAL 7 DAY)\n  QUALIFY ROW_NUMBER() OVER (PARTITION BY currency ORDER BY rate_date DESC) = 1\n)\nSELECT\n  m.rate_date                                   AS report_date,\n  m.currency,\n  m.mid,\n  m.chg_1w_pct,\n  m.min_30d,\n  m.max_30d,\n  m.vol_30d_ann_pct,\n  v.vol_1y_avg_pct,\n  CASE\n    WHEN m.vol_30d_ann_pct > v.vol_1y_avg_pct * 1.2 THEN 'above usual'\n    WHEN m.vol_30d_ann_pct < v.vol_1y_avg_pct * 0.8 THEN 'below usual'\n    ELSE 'usual'\n  END                                           AS vol_level,\n  COALESCE(p.open_docs, 0)                      AS open_docs,\n  COALESCE(p.net_amount, 0)                     AS net_amount,\n  CASE\n    WHEN COALESCE(p.net_amount, 0) < 0 THEN 'net payable (we owe)'\n    WHEN COALESCE(p.net_amount, 0) > 0 THEN 'net receivable (owed to us)'\n    ELSE 'flat'\n  END                                           AS position_side,\n  ROUND(COALESCE(p.net_pln, 0), 2)              AS net_pln,\n  ROUND(COALESCE(p.unrealised_pln, 0), 2)       AS unrealised_pln,\n  ROUND(COALESCE(p.unrealised_pln, 0) - COALESCE(w.unrealised_week_ago, 0), 2) AS unrealised_change_1w_pln,\n  COALESCE(p.overdue_amount, 0)                 AS overdue_amount,\n  COALESCE(p.due_30d_amount, 0)                 AS due_30d_amount,\n  ROUND(SUM(COALESCE(p.net_pln, 0)) OVER (), 2)        AS total_net_pln,\n  ROUND(SUM(COALESCE(p.unrealised_pln, 0)) OVER (), 2) AS total_unrealised_pln\nFROM m\nJOIN vol_1y AS v USING (currency)\nLEFT JOIN pos AS p USING (currency)\nLEFT JOIN week_ago AS w USING (currency)\nORDER BY m.currency",
+        "options": {
+          "maximumBytesBilled": "100000000"
+        }
+      },
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        -192
+      ],
+      "id": "0733809c-1314-4099-9186-e0c419946ead",
+      "name": "Facts",
+      "credentials": {
+        "googleApi": {
+          "id": "lT4sBge6in3SPKNs",
+          "name": "GCP fx"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dad3feb3-3bfa-4d5a-9fc6-cc8f2dd0170e",
+              "name": "cfg",
+              "value": "={{ $('Config').first().json }}",
+              "type": "object"
+            },
+            {
+              "id": "ffcefd75-e228-428a-9f09-86e8e16771d2",
+              "name": "rows",
+              "value": "={{ $('Facts').all().map(i => i.json) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -48,
+        -192
+      ],
+      "id": "94f0915e-050d-433f-b51a-e08aecac12ef",
+      "name": "Bundle",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "import json\n\nitem = _items[0][\"json\"]\n\n\ndef as_json(value):\n    \"\"\"Fields can arrive as JSON text depending on the Edit Fields type; accept both.\"\"\"\n    return json.loads(value) if isinstance(value, str) else value\n\n\ncfg = as_json(item[\"cfg\"])\nrows = as_json(item[\"rows\"])\nif not rows:\n    raise ValueError(\"No facts returned by BigQuery\")\n\n# Rankings are decided here, deterministically, so the model never compares numbers.\ntop_mover = max(rows, key=lambda r: abs(float(r[\"chg_1w_pct\"])))\ntop_result = max(rows, key=lambda r: abs(float(r[\"unrealised_pln\"])))\n\nFIELDS = (\n    \"currency\", \"mid\", \"chg_1w_pct\", \"min_30d\", \"max_30d\", \"vol_30d_ann_pct\",\n    \"vol_level\", \"open_docs\", \"net_amount\", \"position_side\", \"net_pln\",\n    \"unrealised_pln\", \"unrealised_change_1w_pln\", \"overdue_amount\", \"due_30d_amount\",\n)\n\nfacts = {\n    \"report_date\": rows[0][\"report_date\"],\n    \"functional_currency\": \"PLN\",\n    \"total_open_position_pln\": rows[0][\"total_net_pln\"],\n    \"total_unrealised_fx_result_pln\": rows[0][\"total_unrealised_pln\"],\n    \"biggest_weekly_rate_move\": top_mover[\"currency\"],\n    \"largest_fx_result_currency\": top_result[\"currency\"],\n    \"currencies\": [{k: r[k] for k in FIELDS} for r in rows],\n}\n\nSYSTEM = \"\"\"You write a short weekly FX summary for the CFO of a Polish company whose functional currency is PLN.\nYou receive facts as JSON. Every number in it is already calculated.\n\nRules:\n- Use only the facts. Never calculate, round, add, subtract or compare numbers yourself.\n- Copy every number exactly as written in the facts, without rounding or reformatting.\n- Negative unrealised values are FX losses, positive values are gains.\n- unrealised_change_1w_pln includes both rate moves and documents booked or settled during the week.\n- Cover, in this order: the biggest weekly rate move and any currency whose vol_level is not \"usual\";\n  the total open position and the side per currency; the total unrealised FX result and the largest contributor;\n  overdue amounts and amounts due within 30 days.\n- At most 120 words. Plain text in 3-4 short paragraphs. No markdown, no headings, no bullet points.\n- Give no advice on hedging, trading or payments.\"\"\"\n\nloc = cfg[\"vertex_location\"]\nhost = \"aiplatform.googleapis.com\" if loc == \"global\" else f\"{loc}-aiplatform.googleapis.com\"\nurl = (f\"https://{host}/v1/projects/{cfg['project']}/locations/{loc}\"\n       f\"/publishers/google/models/{cfg['model']}:generateContent\")\n\nbody = {\n    \"systemInstruction\": {\"parts\": [{\"text\": SYSTEM}]},\n    \"contents\": [{\"role\": \"user\", \"parts\": [{\"text\": json.dumps(facts, ensure_ascii=False)}]}],\n    \"generationConfig\": {\n        \"temperature\": 0.2,\n        \"maxOutputTokens\": 4096,\n        \"thinkingConfig\": {\"thinkingLevel\": \"low\"},\n    },\n}\n\nreturn [{\"json\": {\"url\": url, \"body\": body, \"facts\": facts}}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -192
+      ],
+      "id": "8ff2d539-4e39-483d-aa2f-3e2d7146721d",
+      "name": "Prepare prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -192
+      ],
+      "id": "5ad415dd-ed8b-4404-bde3-ff392cdea48b",
+      "name": "Gemini",
+      "retryOnFail": true,
+      "credentials": {
+        "googleApi": {
+          "id": "lT4sBge6in3SPKNs",
+          "name": "GCP fx"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "70ba12a7-4df6-4819-9a83-dfccdc6b5460",
+              "name": "response",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "4b85d705-4802-4b68-b433-0b1da2d59db4",
+              "name": "facts",
+              "value": "={{ $('Prepare prompt').first().json.facts }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "5b04645e-e285-4158-b3b0-9ceec149aa27",
+      "name": "Collect"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "import html\nimport json\nimport re\nfrom decimal import Decimal, InvalidOperation\n\nitem = _items[0][\"json\"]\n\n\ndef as_json(value):\n    \"\"\"Fields can arrive as JSON text depending on the Edit Fields type; accept both.\"\"\"\n    return json.loads(value) if isinstance(value, str) else value\n\n\nresp = as_json(item[\"response\"])\nfacts = as_json(item[\"facts\"])\n\n# Unsigned numbers: the sign is often expressed in words (\"we owe 9906.83\"),\n# so values are compared without it.\nNUM = re.compile(r\"\\d[\\d,]*(?:\\.\\d+)?\")\n\n\ndef numbers(text):\n    found = set()\n    for token in NUM.findall(text):\n        try:\n            found.add(Decimal(token.replace(\",\", \"\")))\n        except InvalidOperation:\n            pass\n    return found\n\n\n# Allowed: every number present in the facts, plus small integers (days, counts).\nallowed = numbers(json.dumps(facts)) | {Decimal(n) for n in range(32)}\n\ncand = (resp.get(\"candidates\") or [{}])[0]\nfinish = cand.get(\"finishReason\")\nparts = cand.get(\"content\", {}).get(\"parts\", [])\ntext = \"\".join(p.get(\"text\", \"\") for p in parts if not p.get(\"thought\")).strip()\n\nproblems = []\nif finish != \"STOP\":\n    problems.append(f\"finishReason={finish}\")\nif not text:\n    problems.append(\"empty answer\")\nelse:\n    unknown = sorted(numbers(text) - allowed)\n    if unknown:\n        problems.append(\"numbers not in data: \" + \", \".join(str(n) for n in unknown[:5]))\n\nheader = f\"📊 <b>Weekly FX summary · {html.escape(str(facts['report_date']))}</b>\"\n\nif not problems:\n    body = html.escape(text)\n    footer = \"<i>Figures: NBP table A via BigQuery. Text: Gemini, every number checked against the data.</i>\"\nelse:\n    lines = []\n    for c in facts[\"currencies\"]:\n        chg = str(c[\"chg_1w_pct\"])\n        chg = chg if chg.startswith(\"-\") else \"+\" + chg\n        lines.append(\n            f\"{c['currency']}/PLN {c['mid']} ({chg}% w/w) · \"\n            f\"position {c['net_amount']} {c['currency']} · FX result {c['unrealised_pln']} PLN\"\n        )\n    lines.append(f\"Total FX result: {facts['total_unrealised_fx_result_pln']} PLN\")\n    body = html.escape(\"\\n\".join(lines))\n    footer = f\"<i>AI summary skipped ({html.escape('; '.join(problems))}). Figures shown as calculated.</i>\"\n\nreturn [{\"json\": {\n    \"text\": f\"{header}\\n\\n{body}\\n\\n{footer}\",\n    \"ai_ok\": not problems,\n    \"problems\": problems,\n}}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -192
+      ],
+      "id": "71a1335d-37e9-41ab-87dc-3a6e01383997",
+      "name": "Check summary"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Config').first().json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -192
+      ],
+      "id": "0cdce8fa-01e3-4fa4-843f-4e47742f2a6c",
+      "name": "Send report",
+      "webhookId": "a6ed64c7-e8c5-4fd7-9e9d-8783e4c8fa72",
+      "credentials": {
+        "telegramApi": {
+          "id": "ZYk4anrIPDQuYdAI",
+          "name": "Telegram FX"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "10 13 * * 5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -496,
+        -192
+      ],
+      "id": "6a31ec98-3c23-47de-90ad-2af0189b173a",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facts": {
+      "main": [
+        [
+          {
+            "node": "Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bundle": {
+      "main": [
+        [
+          {
+            "node": "Prepare prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare prompt": {
+      "main": [
+        [
+          {
+            "node": "Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini": {
+      "main": [
+        [
+          {
+            "node": "Collect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect": {
+      "main": [
+        [
+          {
+            "node": "Check summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check summary": {
+      "main": [
+        [
+          {
+            "node": "Send report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ad20777c-5877-40f0-8cc6-50151edf78b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "SYZsZGwo3eH32n9u",
+  "tags": []
+}

@@ -1,0 +1,374 @@
+{
+  "name": "03 FX daily",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        -96
+      ],
+      "id": "091226f3-a25b-40b0-ae1b-087fe3339799",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f38a153f-d2d2-47c9-8f22-a20d1b9699c6",
+              "name": "project",
+              "value": "n8n-automat-fx",
+              "type": "string"
+            },
+            {
+              "id": "9579189b-7a30-461b-8db5-3773ae7a65ca",
+              "name": "dataset",
+              "value": "__BQ_DATASET__",
+              "type": "string"
+            },
+            {
+              "id": "c8041b31-df05-4396-b1bb-5df206310a79",
+              "name": "chat_id",
+              "value": "__ALLOWED_CHAT_ID__",
+              "type": "string"
+            },
+            {
+              "id": "345945ea-8099-455d-a371-5a11e70415d4",
+              "name": "threshold_pct",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "587c01c4-f2ca-46cd-8001-bcf0e759ae44",
+              "name": "stale_days",
+              "value": 5,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -352,
+        -16
+      ],
+      "id": "1decc91b-e247-4d03-a937-d404300fdaab",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e3c41c0-cfe1-49b2-ba07-2c351efe1700",
+              "name": "start_date",
+              "value": "={{ $now.minus({ days: 7 }).toISODate() }}",
+              "type": "string"
+            },
+            {
+              "id": "677aee96-1c66-4670-a2e6-94686a4838c0",
+              "name": "end_date",
+              "value": "={{ $now.toISODate() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -208,
+        -16
+      ],
+      "id": "c2b62356-447b-4353-8282-4b1bb6927f88",
+      "name": "Window"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "dt743Ev0euajvAkT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dt743Ev0euajvAkT",
+          "cachedResultName": "03 FX load window"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "start_date": "={{ $json.start_date }}",
+            "end_date": "={{ $json.end_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        -80,
+        -16
+      ],
+      "id": "ae70bf63-fe26-4bd0-83bf-20d4492f5ff4",
+      "name": "Load window"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": {
+          "__rl": true,
+          "value": "n8n-automat-fx",
+          "mode": "list",
+          "cachedResultName": "n8n-automat",
+          "cachedResultUrl": "https://console.cloud.google.com/bigquery?project=n8n-automat-fx"
+        },
+        "sqlQuery": "WITH last_day AS (\n  SELECT *\n  FROM `{{ $('Config').first().json.project }}.{{ $('Config').first().json.dataset }}.rate_metrics`\n  WHERE rate_date = (\n    SELECT MAX(rate_date)\n    FROM `{{ $('Config').first().json.project }}.{{ $('Config').first().json.dataset }}.rate_metrics`\n  )\n)\nSELECT\n  rate_date,\n  currency,\n  mid,\n  chg_1d_pct,\n  chg_1w_pct,\n  vol_30d_ann_pct,\n  {{ $('Config').first().json.threshold_pct }}                                  AS threshold_pct,\n  DATE_DIFF(CURRENT_DATE('Europe/Warsaw'), rate_date, DAY)                      AS days_since_last,\n  ABS(chg_1d_pct) >= {{ $('Config').first().json.threshold_pct }}               AS is_move,\n  DATE_DIFF(CURRENT_DATE('Europe/Warsaw'), rate_date, DAY)\n    > {{ $('Config').first().json.stale_days }}                                 AS is_stale\nFROM last_day\nORDER BY currency",
+        "options": {
+          "maximumBytesBilled": "100000000"
+        }
+      },
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -16
+      ],
+      "id": "cbc75b6f-f084-40ac-8066-b0890fd4aa8f",
+      "name": "Check",
+      "credentials": {
+        "googleApi": {
+          "id": "lT4sBge6in3SPKNs",
+          "name": "GCP fx"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "rows = [i[\"json\"] for i in _items]\n\n\ndef flag(value):\n    \"\"\"BigQuery returns booleans as the strings 'true'/'false'.\"\"\"\n    return value is True or str(value).lower() == \"true\"\n\n\nif not rows:\n    return [{\"json\": {\n        \"send\": True,\n        \"text\": \"⚠️ <b>FX check returned no data</b>\\nrate_metrics is empty. Check the BigQuery load.\",\n    }}]\n\nlast_date = rows[0][\"rate_date\"]\nmessages = []\n\nif flag(rows[0][\"is_stale\"]):\n    messages.append(\n        f\"⚠️ <b>FX data is stale</b>\\n\"\n        f\"Last NBP table: {last_date} ({rows[0]['days_since_last']} days ago).\\n\"\n        f\"Check the daily load workflow.\"\n    )\n\nmoves = [r for r in rows if flag(r[\"is_move\"])]\nif moves:\n    lines = []\n    for r in sorted(moves, key=lambda r: abs(float(r[\"chg_1d_pct\"])), reverse=True):\n        d1 = float(r[\"chg_1d_pct\"])\n        w1 = float(r[\"chg_1w_pct\"])\n        arrow = \"🔺\" if d1 > 0 else \"🔻\"\n        lines.append(f\"{arrow} {r['currency']}/PLN {r['mid']}: <b>{d1:+.2f}%</b> d/d, {w1:+.2f}% w/w\")\n    messages.append(\n        f\"📈 <b>FX move alert · {last_date}</b>\\n\"\n        + \"\\n\".join(lines)\n        + f\"\\nThreshold: ±{rows[0]['threshold_pct']}% per day\"\n    )\n\nreturn [{\"json\": {\"send\": bool(messages), \"text\": \"\\n\\n\".join(messages)}}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -16
+      ],
+      "id": "33d319c0-d122-462e-8317-ad7b4f11c906",
+      "name": "Compose alert"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "328e2b09-0ab4-4ca9-975e-6bdadfed793d",
+              "leftValue": "={{ $json.send }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        -16
+      ],
+      "id": "ee930afd-2678-45a7-aa55-53dda3ab832d",
+      "name": "Send&"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Config').first().json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        -112
+      ],
+      "id": "d47193d8-0c49-44e5-a8c2-53491597d8c2",
+      "name": "Send alert",
+      "webhookId": "61d04110-8138-4f2a-9996-8389cf9fba07",
+      "credentials": {
+        "telegramApi": {
+          "id": "ZYk4anrIPDQuYdAI",
+          "name": "Telegram FX"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "40 12 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -528,
+        112
+      ],
+      "id": "900a0d80-6aa7-442f-b686-5065a087ca21",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window": {
+      "main": [
+        [
+          {
+            "node": "Load window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load window": {
+      "main": [
+        [
+          {
+            "node": "Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check": {
+      "main": [
+        [
+          {
+            "node": "Compose alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose alert": {
+      "main": [
+        [
+          {
+            "node": "Send&",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send&": {
+      "main": [
+        [
+          {
+            "node": "Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "89ff4a42-a157-4df5-a3f2-b09a4dcb3fae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+  },
+  "nodeGroups": [],
+  "id": "cjsHO4lXpFzh1Kwc",
+  "tags": []
+}
