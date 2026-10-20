@@ -73,7 +73,7 @@
       "name": "Facts",
       "credentials": {
         "googleApi": {
-          "id": "lT4sBge6in3SPKNs",
+          "id": "lT7ciib5XlNHs5lj",
           "name": "GCP fx"
         }
       }
@@ -146,7 +146,7 @@
       "retryOnFail": true,
       "credentials": {
         "googleApi": {
-          "id": "lT4sBge6in3SPKNs",
+          "id": "lT7ciib5XlNHs5lj",
           "name": "GCP fx"
         }
       }
@@ -214,7 +214,7 @@
       "webhookId": "a6ed64c7-e8c5-4fd7-9e9d-8783e4c8fa72",
       "credentials": {
         "telegramApi": {
-          "id": "ZYk4anrIPDQuYdAI",
+          "id": "gi0x1SVMw7DVPfnJ",
           "name": "Telegram FX"
         }
       }
@@ -331,15 +331,19 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4PASS4m6Neq5To5u",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "ad20777c-5877-40f0-8cc6-50151edf78b1",
+  "versionId": "c4c96cac-640c-4453-9e89-e8ce5ccc5290",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "95883600ad9e754d35358795e8fead55ec2a1cb48ebacb8749b90012acf49314"
+    "instanceId": "e0908cde1a87e857798d09657fbcb0cbe2f56ad81abc195a44f8c369bbf2ea8f"
   },
   "nodeGroups": [],
   "id": "SYZsZGwo3eH32n9u",
